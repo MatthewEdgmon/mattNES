@@ -18,11 +18,12 @@
  * along with mattNES.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 
 #include "Emulator.hpp"
 
-int SDL_main(int argc, char** argv) {
+int main(int argc, char** argv) {
 
 	Emulator* emulator = new Emulator();
 

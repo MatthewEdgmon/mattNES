@@ -33,4 +33,4 @@
 #define HEX4X(x) std::setfill('0') << std::setw(4) << std::hex << std::uppercase << unsigned(x) << std::dec << std::nouppercase
 #define HEX2X(x) std::setfill('0') << std::setw(2) << std::hex << std::uppercase << unsigned(x) << std::dec << std::nouppercase
 
-#endif __HEX_OUTPUT_HPP__
+#endif /* __HEX_OUTPUT_HPP__ */

@@ -41,4 +41,4 @@ template<typename T, typename U> inline bool BitCheck(T variable, U position) {
 	return (variable >> position) & (uintmax_t)1;
 }
 
-#endif __BITOPS_HPP__
+#endif /* __BITOPS_HPP__ */

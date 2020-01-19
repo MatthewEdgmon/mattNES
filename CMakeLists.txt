@@ -4,13 +4,13 @@ project(mattNES CXX)
 # Include custom modules.
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
 
+# Find SDL2.
+find_package(SDL2 REQUIRED COMPONENTS main)
+
 # Write CMakeConfig.hpp.
 message("Generating header config file: ${CMAKE_SOURCE_DIR}/Source/CMakeConfig.hpp")
 set(TEST_CONFIG_OPTION 0 CACHE BOOL "Testing CMake config option")
 configure_file(CMakeConfig.hpp.in "${CMAKE_SOURCE_DIR}/Source/CMakeConfig.hpp")
-
-# Find SDL2.
-find_package(SDL2 REQUIRED COMPONENTS main)
 
 # Define source files.
 set(SOURCE_FILES Source/Main.cpp
@@ -51,7 +51,6 @@ target_link_libraries(mattNES ${SDL2_LIBS})
 
 # Set up Visual Studio filters.
 function(assign_source_group)
-    message("Generating Visual Studio filters.")
     foreach(_source IN ITEMS ${ARGN})
         if (IS_ABSOLUTE "${_source}")
             file(RELATIVE_PATH _source_rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_source}")

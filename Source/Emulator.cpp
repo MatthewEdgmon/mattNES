@@ -19,6 +19,7 @@
  */
 
 #include <iostream>
+#include <stdio.h>
 
 #include <SDL.h>
 
@@ -53,6 +54,7 @@ void Emulator::Initialize() {
 	HandleCommandLine();
 
 	/* Startup libraries.*/
+    SDL_SetMainReady();
 	SDL_Init(SDL_INIT_EVERYTHING);
 
 	SDL_version sdl_compiled_version, sdl_linked_version;
@@ -163,7 +165,7 @@ void Emulator::Loop() {
 		const uint64_t perf_freq = SDL_GetPerformanceFrequency();
 		const double seconds = (frame_end - frame_start) / static_cast<double>(perf_freq);
 
-		sprintf_s(title_buffer, 255, "%f", (seconds * 1000.0));
+		sprintf(title_buffer, "%f", (seconds * 1000.0));
 
 		SDL_SetWindowTitle(sdl_window, title_buffer);
 
