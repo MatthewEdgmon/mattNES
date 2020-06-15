@@ -20,14 +20,21 @@
 
 #include <iostream>
 
+#include <SDL.h>
+
 #include "../BitOps.hpp"
 #include "../HexOutput.hpp"
 
 #include "CPU.hpp"
+#include "NESSystem.hpp"
 
-void IllegalOpcode(uint8_t opcode) {
-	std::cout << "Caught Illegal Opcode " << HEX2(opcode) << std::endl;
-	while (1);
+void CPU::IllegalOpcode(uint8_t opcode) {
+	std::cout << "Caught Illegal Opcode " << HEX2(opcode) << " at " << HEX4(program_counter) << '\n';
+	std::cout << "Dump Info Below" << '\n';
+	nes_system->DumpTestInfo();
+	while (1) {
+		SDL_Delay(1);
+	}
 }
 
 void CPU::Step() {
@@ -62,7 +69,7 @@ void CPU::Step() {
 		case 0x01:
 			/* Indirect X Index added here to force wrap around instead of carry in the line after. */
 			operand1 = (Read(program_counter + 1) + register_x);
-			std::cout << "ORA INDX unimp" << std::endl;
+			std::cout << "ORA INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -151,7 +158,7 @@ void CPU::Step() {
 		case 0x10:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
-			if(!BitCheck(register_p, STATUS_BIT_NEGATIVE)) {
+			if(BitCheck(register_p, STATUS_BIT_NEGATIVE) == 0) {
 				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
@@ -159,7 +166,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0x11:
-			std::cout << "ORA INDY unimp" << std::endl;
+			std::cout << "ORA INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 2;
 			break;
@@ -249,7 +256,7 @@ void CPU::Step() {
 			cycles += 6;
 			break;
 		case 0x21:
-			std::cout << "AND INDX unimp" << std::endl;
+			std::cout << "AND INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -358,9 +365,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			operand1 = Read((operand2 << 8) + operand1);
-			if((operand1 & register_a) == 0) { BitSet(register_p, STATUS_BIT_ZERO); } else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(BitCheck(operand1, 6))  { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
-			if(BitCheck(operand1, 7))  { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			if((operand1 & register_a) == 0) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(BitCheck(operand1, 6))        { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			if(BitCheck(operand1, 7))        { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
 			cycles += 4;
 			break;
@@ -421,7 +428,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0x31:
-			std::cout << "AND INDY unimp" << std::endl;
+			std::cout << "AND INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 5;
 			break;
@@ -546,7 +553,7 @@ void CPU::Step() {
 			cycles += 6;
 			break;
 		case 0x41:
-			std::cout << "ROL INDX unimp" << std::endl;
+			std::cout << "ROL INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -649,7 +656,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0x51:
-			std::cout << "EOR INDY unimp" << std::endl;
+			std::cout << "EOR INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 5; // + 1 for page
 			break;
@@ -735,7 +742,7 @@ void CPU::Step() {
 			cycles += 6;
 			break;
 		case 0x61:
-			std::cout << "ADC INDX unimp" << std::endl;
+			std::cout << "ADC INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -913,7 +920,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0x71:
-			std::cout << "ADC INDY unimp" << std::endl;
+			std::cout << "ADC INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 5; // +1 for page
 			break;
@@ -1037,7 +1044,7 @@ void CPU::Step() {
 		case 0x7F: IllegalOpcode(0x7F);
 		case 0x80: IllegalOpcode(0x80);
 		case 0x81:
-			std::cout << "STA INDX unimp" << std::endl;
+			std::cout << "STA INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -1064,7 +1071,9 @@ void CPU::Step() {
 		case 0x87: IllegalOpcode(0x87);
 		case 0x88:
 			register_y--;
-			if(register_y == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_y == 0x00)     {
+				BitSet(register_p, STATUS_BIT_ZERO);
+			}     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			cycles += 2;
 			break;
@@ -1109,10 +1118,14 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0x91:
+			/* Read location from Zero-Page to load from. */
 			operand1 = Read(program_counter + 1);
+			/* Read the Zero-Page location plus one to get the upper half of the address. */
 			operand2 = Read(operand1 + 1);
+			/* Read the Zero-Page location to get the lower half of the address. */
 			operand1 = Read(operand1);
-			Write(((operand2 << 8) + operand1 + register_y), register_a);
+			/* Finally, set the memory location to the contents of register A from operand 1 and 2 plus register Y. */
+			Write(Read(((operand2 << 8) + operand1) + register_y), register_a);
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -1177,7 +1190,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xA1:
-			std::cout << "LDA INDX unimp" << std::endl;
+			std::cout << "LDA INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -1274,11 +1287,14 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xB1:
+			/* Read location from Zero-Page to load from. */
 			operand1 = Read(program_counter + 1);
+			/* Read the Zero-Page location plus one to get the upper half of the address. */
 			operand2 = Read(operand1 + 1);
+			/* Read the Zero-Page location to get the lower half of the address. */
 			operand1 = Read(operand1);
-			target = (operand2 << 8) + operand1 + register_y;
-			register_a = Read(target);
+			/* Finally, set register A to be the contents of the memory location from operand 1 and 2 plus register Y. */
+			register_a = Read(((operand2 << 8) + operand1) + register_y);
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
@@ -1372,7 +1388,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xC1:
-			std::cout << "CMP INDX unimp" << std::endl;
+			std::cout << "CMP INDX unimp" << '\n';
 			program_counter += 1;
 			cycles += 6;
 			break;
@@ -1476,7 +1492,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xD1:
-			std::cout << "CMP INDY unimp" << std::endl;
+			std::cout << "CMP INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 5; // +1 for page
 			break;
@@ -1557,7 +1573,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xE1:
-			std::cout << "SBC INDX unimp" << std::endl;
+			std::cout << "SBC INDX unimp" << '\n';
 			program_counter += 2;
 			cycles += 6;
 			break;
@@ -1655,7 +1671,7 @@ void CPU::Step() {
 			cycles += 2;
 			break;
 		case 0xF1:
-			std::cout << "SBC INDY unimp" << std::endl;
+			std::cout << "SBC INDY unimp" << '\n';
 			program_counter += 1;
 			cycles += 5; // +1 page
 			break;
@@ -1724,7 +1740,7 @@ void CPU::Step() {
 			break;
 		case 0xFF: IllegalOpcode(0xFF);
 		default:
-			std::cout << "Reached normally unreachable default in switch statement." << std::endl;
+			std::cout << "Reached normally unreachable default in switch statement." << '\n';
 			while (1);
 			break;
 	}

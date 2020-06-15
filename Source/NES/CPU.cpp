@@ -74,7 +74,6 @@ void CPU::Reset(bool hard) {
 	vector_irq  = Read(0xFFFE);
 	vector_irq += Read(0xFFFF) << 8;
 
-
 	program_counter = vector_rst;
 	increment_pc = true;
 

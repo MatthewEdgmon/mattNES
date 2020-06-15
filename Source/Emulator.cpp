@@ -61,9 +61,9 @@ void Emulator::Initialize() {
 	SDL_VERSION(&sdl_compiled_version);
 	SDL_GetVersion(&sdl_linked_version);
 
-	std::cout << "Using SDL2 engine." << std::endl;
-	std::cout << "Compiled with SDL2 version: " << sdl_compiled_version.major << "." << sdl_compiled_version.minor << "." << sdl_compiled_version.patch << std::endl;
-	std::cout << "Linked with SDL2 version:   " << sdl_linked_version.major << "." << sdl_linked_version.minor << "." << sdl_linked_version.patch << std::endl;
+	std::cout << "Using SDL2 engine." << '\n';
+	std::cout << "Compiled with SDL2 version: " << sdl_compiled_version.major << "." << sdl_compiled_version.minor << "." << sdl_compiled_version.patch << '\n';
+	std::cout << "Linked with SDL2 version:   " << sdl_linked_version.major << "." << sdl_linked_version.minor << "." << sdl_linked_version.patch << '\n';
 
 	SDL_DisableScreenSaver();
 
@@ -73,14 +73,14 @@ void Emulator::Initialize() {
 
 	SDL_GetRendererInfo(sdl_renderer, &sdl_renderer_info);
 
-	std::cout << "Renderer Name: " << sdl_renderer_info.name << std::endl;
+	std::cout << "Renderer Name: " << sdl_renderer_info.name << '\n';
 	std::cout << "Renderer Texture Formats: ";
 
 	for(size_t i = 0; i < sdl_renderer_info.num_texture_formats; i++) {
 		std::cout << SDL_GetPixelFormatName(sdl_renderer_info.texture_formats[i]) << " ";
 	}
 
-	std::cout << std::endl;
+	std::cout << '\n';
 
 	sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT);
 
@@ -98,17 +98,34 @@ void Emulator::Initialize() {
 	// SDL Initializtion Finished Here.
 
 	/* Create emulated system. */
-	nes_system = new NESSystem();
+	nes_system = new NESSystem(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
 
 	/* Test ROMs */
-	//nes_system->Initialize("nes-test-roms/instr_test-v3/all_instrs.nes");
-	nes_system->Initialize("nes-test-roms/instr_test-v3/official_only.nes");
-	//nes_system->Initialize("nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes");
-	//nes_system->Initialize("nes-test-roms/nrom368/test1.nes");
-	//nes_system->Initialize("nes-test-roms/spritecans-2011/spritecans.nes");
+	//nes_system->Initialize("Test/instr_test-v3/all_instrs.nes");
+	//nes_system->Initialize("Test/instr_test-v3/official_only.nes");
+	nes_system->Initialize("Test/instr_test-v3/rom_singles/01-implied.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/02-immediate.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/03-zero_page.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/04-zp_xy.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/05-absolute.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/06-abs_xy.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/07-ind_x.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/08-ind_y.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/09-branches.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/10-stack.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/11-jmp_jsr.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/12-rts.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/13-rti.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/14-brk.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/15-special.nes");
+
+	//nes_system->Initialize("Test/instr_misc/instr_misc.nes");
+
+	//nes_system->Initialize("Test/ppu_vbl_nmi/ppu_vbl_nmi.nes");
+	//nes_system->Initialize("Test/nrom368/test1.nes");
+	//nes_system->Initialize("Test/spritecans-2011/spritecans.nes");
 
 	/* NROM Games */
-	//nes_system->Initialize("ROMs/Baseball.nes");
 	//nes_system->Initialize("ROMs/Baseball.nes");
 	//nes_system->Initialize("ROMs/Donkey Kong.nes");
 	//nes_system->Initialize("ROMs/Mario Bros..nes");
@@ -126,9 +143,15 @@ void Emulator::Loop() {
 
 	char title_buffer[255];
 
+	uint64_t frame_start = 0;
+	uint64_t frame_end = 0;
+	uint64_t perf_freq = 0;
+	double frame_time = 0.0f;
+	double frame_rate = 0.0f;
+
 	while(is_running) {
 
-		const uint64_t frame_start = SDL_GetPerformanceCounter();
+		frame_start = SDL_GetPerformanceCounter();
 
 		while(SDL_PollEvent(&sdl_event)) {
 
@@ -153,27 +176,37 @@ void Emulator::Loop() {
 			nes_system->Frame();
 		}
 
-		SDL_RenderClear(sdl_renderer);
-
-		SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (NES_SCREEN_WIDTH * 4));
-
-		SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-
-		SDL_RenderPresent(sdl_renderer);
-
-		const uint64_t frame_end = SDL_GetPerformanceCounter();
-		const uint64_t perf_freq = SDL_GetPerformanceFrequency();
-		const double seconds = (frame_end - frame_start) / static_cast<double>(perf_freq);
-
-		sprintf(title_buffer, "%f", (seconds * 1000.0));
-
-		SDL_SetWindowTitle(sdl_window, title_buffer);
-
-		if(display_framerate) {
-			std::cout << "Frame Time: " << seconds * 1000.0 << "ms" << std::endl;
+		if(nes_system->GetCPU()->GetProgramCounter() == 0xE976) {
+			nes_system->DumpTestInfo();
+			emulation_paused = true;
 		}
 
-		//SDL_Delay(1);
+		//SDL_RenderClear(sdl_renderer);
+
+		//SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (NES_SCREEN_WIDTH * 4));
+
+		//SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+
+		//SDL_RenderPresent(sdl_renderer);
+
+		frame_end = SDL_GetPerformanceCounter();
+		
+		/* Only update the frametime counter every 100 ticks. */
+		if(frame_end % 100 == 0) {
+			perf_freq = SDL_GetPerformanceFrequency();
+			frame_time = (frame_end - frame_start) / static_cast<double>(perf_freq);
+			frame_rate = 1 / (frame_time * 1000.0);
+
+			sprintf(title_buffer, "%f", (frame_time * 1000.0));
+			//sprintf(title_buffer, "%f", frame_rate);
+			SDL_SetWindowTitle(sdl_window, title_buffer);
+		}
+
+		if(display_framerate) {
+			std::cout << "Frame Time: " << frame_time * 1000.0 << "ms" << '\n';
+		}
+
+		SDL_Delay(1);
 	}
 }
 
@@ -246,9 +279,9 @@ void Emulator::HandleInputUp() {
 }
 
 void Emulator::HandleCommandLine() {
-	std::cout << "Working directory: " << stored_argv[0] << std::endl;
+	std::cout << "Working directory: " << stored_argv[0] << '\n';
 
 	for(size_t i = 1; i < stored_argc; i++) {
-		std::cout << "Argument " << i << ": " << stored_argv[i] << std::endl;
+		std::cout << "Argument " << i << ": " << stored_argv[i] << '\n';
 	}
 }

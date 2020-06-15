@@ -43,7 +43,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 	prg_rom_firstKB = DefineBank(0x8000, 0xBFFF, PRG_ROM, true);
 
 	for(size_t i = 0; i < 0x3FFF; i++) {
-		prg_rom_firstKB->data.at(i) = cartridge->GetFileMemory().at(i + cartridge->GetHeaderOffset());
+		prg_rom_firstKB->data[i] = cartridge->GetFileMemory().at(i + cartridge->GetHeaderOffset());
 	}
 	
 	memory_map_cpu[0x8000] = prg_rom_firstKB;
@@ -53,7 +53,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 		prg_rom_secondKB = DefineBank(0xC000, 0xFFFF, PRG_ROM, true);
 
 		for(size_t i = 0; i < 0x3FFF; i++) {
-			prg_rom_secondKB->data.at(i) = cartridge->GetFileMemory().at(i + 0x4000 + cartridge->GetHeaderOffset());
+			prg_rom_secondKB->data[i] = cartridge->GetFileMemory().at(i + 0x4000 + cartridge->GetHeaderOffset());
 		}
 
 		memory_map_cpu[0xC000] = prg_rom_secondKB;
@@ -73,7 +73,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 
 	/* Skip over PRG ROM sections. */
 	for(size_t i = 0; i < 0x1FFF; i++) {
-         chr_rom->data.at(i) = cartridge->GetFileMemory().at(i + (cartridge->GetHeader()->prg_rom_size * 0x4000) + cartridge->GetHeaderOffset());
+         chr_rom->data[i] = cartridge->GetFileMemory().at(i + (cartridge->GetHeader()->prg_rom_size * 0x4000) + cartridge->GetHeaderOffset());
 	}
 
 	memory_map_ppu[0x0000] = chr_rom;
@@ -94,16 +94,16 @@ uint8_t MapperNROM::ReadCPU(uint16_t address) {
 
 	if(address >= 0x6000 && address <= 0x7FFF) {
 		if(prg_ram->mapped) {
-			return memory_map_cpu[0x6000]->data.at((address - 0x6000));
+			return memory_map_cpu[0x6000]->data[address - 0x6000];
 		}
 	}
 
 	if(address >= 0x8000 && address <= 0xBFFF) {
-		return memory_map_cpu[0x8000]->data.at((address - 0x8000));
+		return memory_map_cpu[0x8000]->data[address - 0x8000];
 	}
 
 	if(address >= 0xC000 && address <= 0xFFFF) {
-		return memory_map_cpu[0xC000]->data.at((address - 0xC000));
+		return memory_map_cpu[0xC000]->data[address - 0xC000];
 	}
 
 	std::cout << "Unknown ROM read from " << HEX4(address) << std::endl;
@@ -114,7 +114,8 @@ void MapperNROM::WriteCPU(uint16_t address, uint8_t value) {
 
 	if(address >= 0x6000 && address <= 0x7FFF) {
 		if(prg_ram->mapped) {
-			memory_map_cpu[0x6000]->data.at((address - 0x6000)) = value;
+			memory_map_cpu[0x6000]->data[(address - 0x6000)] = value;
+			return;
 		}
 	}
 
@@ -125,7 +126,7 @@ void MapperNROM::WriteCPU(uint16_t address, uint8_t value) {
 uint8_t MapperNROM::ReadPPU(uint16_t address) {
 
 	if(address >= 0x0000 && address <= 0x1FFF) {
-		return memory_map_ppu[0x0000]->data.at((address));
+		return memory_map_ppu[0x0000]->data[address];
 	}
 
 	std::cout << "Unknown ROM read from " << HEX4(address) << std::endl;

@@ -49,6 +49,7 @@ class CPU {
 		/* Functions located in CPU_Instructions.cpp ----------------------------------------------------- */
 
 		void Step();             /* Execute one instruction. */
+		void IllegalOpcode(uint8_t opcode);
 
 		/* Functions located in CPU_Disassemble.cpp ------------------------------------------------------ */
 
@@ -71,6 +72,13 @@ class CPU {
 		uint8_t ReadDebug(uint16_t address);
 		/* Read from CPU stack without causing any emulation side effects. */
 		uint8_t PeekStack(uint8_t stack_location) { return cpu_memory[(0x100 + stack_location)]; };
+
+		uint16_t GetProgramCounter() { return program_counter; };
+		uint8_t GetRegisterP() { return register_p; };
+		uint8_t GetRegisterA() { return register_a; };
+		uint8_t GetRegisterX() { return register_x; };
+		uint8_t GetRegisterY() { return register_y; };
+		uint8_t GetRegisterS() { return register_s; };
 
 		bool IsInTestMode() { return test_mode; };
 

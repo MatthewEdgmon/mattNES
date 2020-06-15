@@ -22,7 +22,6 @@
 #define __MAPPER_NROM_HPP__
 
 #include <string>
-#include <vector>
 
 #include "Mapper.hpp"
 

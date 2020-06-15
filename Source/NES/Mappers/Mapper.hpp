@@ -24,7 +24,6 @@
 #include <cstdint>
 #include <map>
 #include <string>
-#include <vector>
 
 typedef enum bank_type {
 	PRG_ROM,
@@ -38,7 +37,7 @@ typedef struct rom_bank {
 	uint16_t rom_address_start;
 	uint16_t rom_address_end;
 	uint16_t size;
-	std::vector<uint8_t> data;
+	uint8_t* data;
 	bool mapped;
 } rom_bank_t;
 
@@ -65,12 +64,13 @@ class Mapper {
 			new_bank->rom_address_end = map_address_end;
 			new_bank->size = (new_bank->rom_address_end - new_bank->rom_address_start) + 1;
 			new_bank->type = type;
-			new_bank->data.resize(new_bank->size);
+			new_bank->data = static_cast<uint8_t*>(malloc(new_bank->size * sizeof(uint8_t)));
 			return new_bank;
 		}
 
 		void DeleteBank(rom_bank_t* bank) {
 			if(bank) {
+				free(bank->data);
 				delete bank;
 			}
 		}

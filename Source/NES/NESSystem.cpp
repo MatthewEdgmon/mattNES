@@ -29,9 +29,12 @@
 #include "PPU.hpp"
 
 #include "NESSystem.hpp"
+#include <SDL.h>
 
-NESSystem::NESSystem() {
-
+NESSystem::NESSystem(cpu_emulation_mode_t cpu_type, ppu_emulation_mode_t ppu_type, region_emulation_mode_t region) {
+	cpu_emulation_mode = cpu_type;
+	ppu_emulation_mode = ppu_type;
+	region_emulation_mode = region;
 }
 
 NESSystem::~NESSystem() {
@@ -81,41 +84,65 @@ void NESSystem::Reset(bool hard) {
 
 void NESSystem::Frame() {
 
-	/* For NTSC, there is exactly three PPU steps per CPU step. */
-	ppu->Step();
-	ppu->Step();
-	ppu->Step();
-	apu->Step();
-	cpu->Step();
-
-	/* TODO: Handle PAL emulation, which is 3.2 PPU steps per CPU step. */
+	if(region_emulation_mode == NTSC) {
+		/* For NTSC, there is exactly three PPU steps per CPU step. */
+		ppu->Step();
+		ppu->Step();
+		ppu->Step();
+		apu->Step();
+		cpu->Step();
+	} else if(region_emulation_mode == PAL) {
+		/* TODO: Handle PAL emulation, which is 3.2 PPU steps per CPU step. */
+	}
+	
 }
 
 void NESSystem::DumpTestInfo() {
 
+	std::cout << "Register Dump\n";
+	std::cout << "Register A" << HEX2(cpu->GetRegisterA()) << '\n';
+	std::cout << "Register X" << HEX2(cpu->GetRegisterX()) << '\n';
+	std::cout << "Register Y" << HEX2(cpu->GetRegisterY()) << '\n';
+	std::cout << "Flags Set: ";
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_NEGATIVE))          { std::cout << " NEGATIVE"; }  else { std::cout << "         "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_OVERFLOW))          { std::cout << " OVERFLOW"; }  else { std::cout << "         "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_S2))                { std::cout << " UNUSED2"; }   else { std::cout << "        "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_S1))                { std::cout << " UNUSED1"; }   else { std::cout << "        "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_DECIMAL))           { std::cout << " DECIMAL"; }   else { std::cout << "        "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_INTERRUPT_DISABLE)) { std::cout << " INTERRUPT"; } else { std::cout << "          "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_ZERO))              { std::cout << " ZERO"; }      else { std::cout << "     "; }
+	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_CARRY))             { std::cout << " CARRY"; }     else { std::cout << "      "; }
+	std::cout << "\n\n";
+
 	if((GetCPU()->ReadDebug(0x6001) != 0xDE) || (GetCPU()->ReadDebug(0x6002) != 0xB0) || (GetCPU()->ReadDebug(0x6003) != 0x61)) {
-		std::cout << std::endl << "Test ROM not detected." << std::endl;
+		std::cout << "Test ROM not detected" << '\n';
 		return;
 	}
 
 	if(GetCPU()->ReadDebug(0x6000) == 0x81) {
-		std::cout << std::endl << "Test ROM needs reset." << std::endl;
+		std::cout << "Test ROM needs reset. Resetting..." << '\n';
+		// TODO: Remove this SDL_Delay when test suite script is made.
+		SDL_Delay(1000);
+		Reset(false);
 		return;
 	} else if(GetCPU()->ReadDebug(0x6000) == 0x80) {
-		std::cout << std::endl << "Test ROM still testing." << std::endl;
-		return;
+		std::cout << "Test ROM still testing." << '\n';
+		std::cout << "[Test ROM (0x6004)]: ";
+		//return;
 	} else {
-		std::cout << "[DEBUG 0x6004]: " << std::endl;
+		std::cout << "[Test ROM (0x6004)]: ";
 	}
 
 	uint16_t debug_location = 0x6004;
-	uint8_t debug_char = 0xFF;
+	char debug_char = 0xFF;
 
 	while(debug_char != 0) {
-		debug_char = GetCPU()->ReadDebug(debug_location);
+		debug_char = (char) GetCPU()->ReadDebug(debug_location);
 		std::cout << debug_char;
 		debug_location++;
 	}
+
+	std::cout << '\n';
 
 	return;
 }

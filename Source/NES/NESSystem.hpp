@@ -51,8 +51,13 @@ class NESSystem {
 			RP2C07 /* PAL */
 		} ppu_emulation_mode_t;
 
+		typedef enum RegionEmulationMode {
+			NTSC,
+			PAL
+		} region_emulation_mode_t;
+
 	public:
-		NESSystem();
+		NESSystem(cpu_emulation_mode_t cpu_type, ppu_emulation_mode_t ppu_type, region_emulation_mode_t region);
 		~NESSystem();
 
 		void Initialize(std::string rom_file_name);
@@ -62,8 +67,9 @@ class NESSystem {
 
 		void DumpTestInfo();
 
-		cpu_emulation_mode_t GetCPUModel() { return cpu_emulation_mode; };
-		ppu_emulation_mode_t GetPPUModel() { return ppu_emulation_mode; };
+		cpu_emulation_mode_t    GetCPUModel() { return cpu_emulation_mode;    };
+		ppu_emulation_mode_t    GetPPUModel() { return ppu_emulation_mode;    };
+		region_emulation_mode_t GetRegion()   { return region_emulation_mode; };
 
 		ControllerIO* GetControllerIO() { return controller_io; }
 		Cartridge* GetCartridge() { return cartridge; }
@@ -75,8 +81,9 @@ class NESSystem {
 		void SetFloatingBus(uint8_t value) { floating_bus_value = value; }
 
 	private:
-		cpu_emulation_mode_t cpu_emulation_mode;
-		ppu_emulation_mode_t ppu_emulation_mode;
+		cpu_emulation_mode_t    cpu_emulation_mode;
+		ppu_emulation_mode_t    ppu_emulation_mode;
+		region_emulation_mode_t region_emulation_mode;
 
 		ControllerIO* controller_io;
 		Cartridge* cartridge;
