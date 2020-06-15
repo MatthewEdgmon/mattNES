@@ -8,7 +8,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake")
 find_package(SDL2 REQUIRED COMPONENTS main)
 
 # Write CMakeConfig.hpp.
-message("Generating header config file: ${CMAKE_SOURCE_DIR}/Source/CMakeConfig.hpp")
+message(STATUS "Generating header config file: ${CMAKE_SOURCE_DIR}/Source/CMakeConfig.hpp")
 set(TEST_CONFIG_OPTION 0 CACHE BOOL "Testing CMake config option")
 configure_file(CMakeConfig.hpp.in "${CMAKE_SOURCE_DIR}/Source/CMakeConfig.hpp")
 
@@ -72,8 +72,11 @@ set_target_properties(mattNES PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT mattNES)
 
 # Copy SDL2 DLLs to output folder on Windows.
+message(STATUS "Copying SDL2 DLLs to build output directory.")
 if(WIN32)
     foreach(DLL ${SDL2_DLLS})
+        message(STATUS "${DLL}")
+        message(STATUS "${CMAKE_GENERATOR_PLATFORM}")
         add_custom_command(TARGET mattNES POST_BUILD COMMAND
             ${CMAKE_COMMAND} -E copy_if_different ${DLL} $<TARGET_FILE_DIR:mattNES>)
     endforeach()
