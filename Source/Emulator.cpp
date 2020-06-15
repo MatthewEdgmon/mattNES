@@ -102,8 +102,8 @@ void Emulator::Initialize() {
 
 	/* Test ROMs */
 	//nes_system->Initialize("Test/instr_test-v3/all_instrs.nes");
-	//nes_system->Initialize("Test/instr_test-v3/official_only.nes");
-	nes_system->Initialize("Test/instr_test-v3/rom_singles/01-implied.nes");
+	nes_system->Initialize("Test/instr_test-v3/official_only.nes");
+	//nes_system->Initialize("Test/instr_test-v3/rom_singles/01-implied.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/02-immediate.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/03-zero_page.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/04-zp_xy.nes");
@@ -176,10 +176,10 @@ void Emulator::Loop() {
 			nes_system->Frame();
 		}
 
-		if(nes_system->GetCPU()->GetProgramCounter() == 0xE976) {
-			nes_system->DumpTestInfo();
-			emulation_paused = true;
-		}
+		//if(nes_system->GetCPU()->GetProgramCounter() == 0xE976) {
+		//	nes_system->DumpTestInfo();
+		//	emulation_paused = true;
+		//}
 
 		//SDL_RenderClear(sdl_renderer);
 

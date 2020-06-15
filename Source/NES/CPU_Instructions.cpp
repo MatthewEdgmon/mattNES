@@ -1071,9 +1071,7 @@ void CPU::Step() {
 		case 0x87: IllegalOpcode(0x87);
 		case 0x88:
 			register_y--;
-			if(register_y == 0x00)     {
-				BitSet(register_p, STATUS_BIT_ZERO);
-			}     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_y == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			cycles += 2;
 			break;
@@ -1603,8 +1601,8 @@ void CPU::Step() {
 			operand2 = Read(operand1);
 			operand2++;
 			Write(operand1, operand2);
-			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
 			cycles += 5;
 			break;
