@@ -134,7 +134,7 @@ void CPU::StepDisassembler() {
 		case 0x3D: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " AND " << HEX4((operand2 << 8) + operand1 + register_x) << '\n'; break;
 		case 0x3E: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " ROL " << HEX4((operand2 << 8) + operand1 + register_x) << '\n'; break;
 		case 0x3F: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0x40: std::cout << "      "                                         << " RTI " << HEX4((PeekStack(register_s + 2) << 8) + PeekStack(register_s + 3)) << '\n'; break;
+		case 0x40: std::cout << "      "                                         << " RTI " << HEX4((PeekStack(register_s + 3) << 8) + PeekStack(register_s + 2)) << '\n'; break;
 		case 0x41: std::cout << " " << HEX2X(operand1) << "   "                  << " EOR INDX" << '\n'; break;
 		case 0x42: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0x43: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
@@ -166,7 +166,7 @@ void CPU::StepDisassembler() {
 		case 0x5D: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " EOR " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2(Read((operand2 << 8) + operand1) + register_x) << '\n'; break;
 		case 0x5E: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " LSR " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2(Read((operand2 << 8) + operand1) + register_x) << '\n'; break;
 		case 0x5F: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0x60: std::cout << "      "                                         << " RTS " << HEX4((PeekStack(register_s + 2) << 8) + PeekStack(register_s + 3)) << '\n'; break;
+		case 0x60: std::cout << "      "                                         << " RTS " << HEX4((PeekStack(register_s + 3) << 8) + PeekStack(register_s + 2)) << '\n'; break;
 		case 0x61: std::cout << " " << HEX2X(operand1) << "   "                  << " ADC ?INDX?" << HEX2X(operand1) << '\n'; break;
 		case 0x62: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0x63: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
@@ -234,9 +234,9 @@ void CPU::StepDisassembler() {
 		case 0xA1: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA ?INDX? " << HEX2(operand1) << '\n'; break;
 		case 0xA2: std::cout << " " << HEX2X(operand1) << "   "                  << " LDX " << HEX2(operand1) << '\n'; break;
 		case 0xA3: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0xA4: std::cout << " " << HEX2X(operand1) << "   "                  << " LDY 0x00" << HEX2X(operand1) << " = " << HEX2X(register_y) << '\n'; break;
-		case 0xA5: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA 0x00" << HEX2X(operand1) << " = " << HEX2X(register_a) << '\n'; break;
-		case 0xA6: std::cout << " " << HEX2X(operand1) << "   "                  << " LDX 0x00" << HEX2X(operand1) << " = " << HEX2X(register_x) << '\n'; break;
+		case 0xA4: std::cout << " " << HEX2X(operand1) << "   "                  << " LDY 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1)) << '\n'; break;
+		case 0xA5: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1)) << '\n'; break;
+		case 0xA6: std::cout << " " << HEX2X(operand1) << "   "                  << " LDX 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1)) << '\n'; break;
 		case 0xA7: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xA8: std::cout << "      "                                         << " TAY" << '\n'; break;
 		case 0xA9: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA " << HEX2(operand1) << '\n'; break;
@@ -255,11 +255,11 @@ void CPU::StepDisassembler() {
 		case 0xB6: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA 0x00" << HEX2X((uint8_t)(operand1 + register_y)) << " = " << HEX2X(Read((uint8_t)(operand1 + register_y))) << '\n'; break;
 		case 0xB7: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xB8: std::cout << "      "                                         << " CLV" << '\n'; break;
-		case 0xB9: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA 0x00" << HEX2X((uint8_t)(operand1 + register_y)) << " = " << HEX2X(Read((uint8_t)(operand1 + register_y))) << '\n'; break;
+		case 0xB9: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " LDA 0x00" << HEX4((operand2 << 8) + operand1 + register_y) << " = " << HEX2X(Read((operand2 << 8) + operand1 + register_y)) << '\n'; break;
 		case 0xBA: std::cout << "      "                                         << " TSX" << '\n'; break;
 		case 0xBB: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xBC: std::cout << " " << HEX2X(operand1) << "   "                  << " LDY " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2X(Read((operand2 << 8) + operand1 + register_x)) << '\n'; break;
-		case 0xBD: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2X(Read((operand2 << 8) + operand1 + register_x)) << '\n'; break;
+		case 0xBD: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " LDA " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2X(Read((operand2 << 8) + operand1 + register_x)) << '\n'; break;
 		case 0xBE: std::cout << " " << HEX2X(operand1) << "   "                  << " LDX " << HEX4((operand2 << 8) + operand1 + register_y) << " = " << HEX2X(Read((operand2 << 8) + operand1 + register_y)) << '\n'; break;
 		case 0xBF: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xC0: std::cout << " " << HEX2X(operand1) << "   "                  << " CPY " << HEX2X(operand1) << '\n'; break;
@@ -302,7 +302,7 @@ void CPU::StepDisassembler() {
 		case 0xE5: std::cout << " " << HEX2X(operand1) << "   "                  << " SBC 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1)) << '\n'; break;
 		case 0xE6: std::cout << " " << HEX2X(operand1) << "   "                  << " INC 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1) + 1) << '\n'; break;
 		case 0xE7: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0xE8: std::cout << "      "                                         << " INX X = " << HEX2(register_x) << '\n'; break;
+		case 0xE8: std::cout << "      "                                         << " INX X = " << HEX2(register_x + 1) << '\n'; break;
 		case 0xE9: std::cout << " " << HEX2X(operand1) << "   "                  << " SBC " << HEX2X(operand1) << '\n'; break;
 		case 0xEA: std::cout << "      "                                         << " NOP" << '\n'; break;
 		case 0xEB: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;

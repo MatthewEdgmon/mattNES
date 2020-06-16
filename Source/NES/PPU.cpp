@@ -111,7 +111,7 @@ void PPU::Step() {
 		/* Bit 4 is always set because we're drawing backgrounds only for now. */
 		uint8_t palette_index = 0x10;
 
-		/* AAdding top left for now. */
+		/* Adding top left for now. */
 		palette_index += topleft;
 
 		/* Fetch the color from the palette itself at 0x3F00 through 0x3F0F */
@@ -163,8 +163,6 @@ void PPU::Step() {
 	/* Pre-render scanline (261). */
 	if(current_scanline == 261) {
 		ProcessPrerenderScanline();
-		current_scanline = 0;
-		frame_count++;
 	}
 	
 	/* Check for new scanline. */
@@ -174,6 +172,8 @@ void PPU::Step() {
 	} else {
 		current_cycle++;
 	}
+
+	//std::cout << "[PPU] SCANLINE " << current_scanline << " CYCLE " << current_cycle << '\n';
 
 	/* Increase absolute total cycles executed. */
 	cycle_count++;
@@ -199,6 +199,12 @@ void PPU::ProcessPrerenderScanline() {
 
 	if(current_cycle == 321 || current_cycle == 329) {
 		
+	}
+
+	/* Set new frame at the end of the pre-render line. */
+	if(current_cycle == 340) {
+		current_scanline = 0;
+		frame_count++;
 	}
 
 	// TODO: Skip 1 cycle at cycle 340 for odd frames that have rendering enabled.

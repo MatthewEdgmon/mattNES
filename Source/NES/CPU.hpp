@@ -116,6 +116,7 @@ class CPU {
 		uint8_t dis_operand2;
 
 		bool halted;
+		bool halt_on_illegal_opcode;
 		bool increment_pc;
 
 		bool test_mode;

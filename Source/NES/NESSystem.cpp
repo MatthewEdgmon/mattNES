@@ -99,10 +99,13 @@ void NESSystem::Frame() {
 
 void NESSystem::DumpTestInfo() {
 
-	std::cout << "Register Dump\n";
-	std::cout << "Register A" << HEX2(cpu->GetRegisterA()) << '\n';
-	std::cout << "Register X" << HEX2(cpu->GetRegisterX()) << '\n';
-	std::cout << "Register Y" << HEX2(cpu->GetRegisterY()) << '\n';
+	std::cout << "\nCPU STATE\n";
+	std::cout << "Register A = " << HEX2(cpu->GetRegisterA()) << '\n';
+	std::cout << "Register X = " << HEX2(cpu->GetRegisterX()) << '\n';
+	std::cout << "Register Y = " << HEX2(cpu->GetRegisterY()) << '\n';
+	std::cout << "Register S = " << HEX2(cpu->GetRegisterS()) << '\n';
+	std::cout << "Register P = " << HEX2(cpu->GetRegisterP()) << '\n';
+	std::cout << "Program Counter = " << HEX4(cpu->GetProgramCounter()) << '\n';
 	std::cout << "Flags Set: ";
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_NEGATIVE))          { std::cout << " NEGATIVE"; }  else { std::cout << "         "; }
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_OVERFLOW))          { std::cout << " OVERFLOW"; }  else { std::cout << "         "; }
@@ -112,15 +115,15 @@ void NESSystem::DumpTestInfo() {
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_INTERRUPT_DISABLE)) { std::cout << " INTERRUPT"; } else { std::cout << "          "; }
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_ZERO))              { std::cout << " ZERO"; }      else { std::cout << "     "; }
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_CARRY))             { std::cout << " CARRY"; }     else { std::cout << "      "; }
-	std::cout << "\n\n";
+	std::cout << '\n';
 
 	if((GetCPU()->ReadDebug(0x6001) != 0xDE) || (GetCPU()->ReadDebug(0x6002) != 0xB0) || (GetCPU()->ReadDebug(0x6003) != 0x61)) {
-		std::cout << "Test ROM not detected" << '\n';
+		std::cout << "Test ROM not detected.\n";
 		return;
 	}
 
 	if(GetCPU()->ReadDebug(0x6000) == 0x81) {
-		std::cout << "Test ROM needs reset. Resetting..." << '\n';
+		std::cout << "Test ROM needs reset. Resetting...\n";
 		// TODO: Remove this SDL_Delay when test suite script is made.
 		SDL_Delay(1000);
 		Reset(false);
@@ -130,16 +133,12 @@ void NESSystem::DumpTestInfo() {
 		std::cout << "[Test ROM (0x6004)]: ";
 		//return;
 	} else {
+		std::cout << "Test ROM is finished.\n";
 		std::cout << "[Test ROM (0x6004)]: ";
 	}
 
-	uint16_t debug_location = 0x6004;
-	char debug_char = 0xFF;
-
-	while(debug_char != 0) {
-		debug_char = (char) GetCPU()->ReadDebug(debug_location);
-		std::cout << debug_char;
-		debug_location++;
+	for(size_t i = 0; i < 64; i++) {
+		printf("%c", GetCPU()->ReadDebug(0x6004 + i));
 	}
 
 	std::cout << '\n';

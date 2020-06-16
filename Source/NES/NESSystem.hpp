@@ -21,6 +21,8 @@
 #ifndef __NES_SYSTEM_HPP__
 #define __NES_SYSTEM_HPP__
 
+#include <string>
+
 class ControllerIO;
 class Cartridge;
 class APU;

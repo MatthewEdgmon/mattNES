@@ -51,6 +51,7 @@ void CPU::Initialize() {
 	}
 
 	halted = false;
+	halt_on_illegal_opcode = false;
 	increment_pc = false;
 	test_mode = false;
 	show_disassembly = true;
@@ -153,23 +154,27 @@ void CPU::Push(uint8_t value) {
 
 	if(register_s == 0x00) {
 		std::cout << std::endl << std::endl << "STACK OVERFLOW" << std::endl << std::endl;
+		nes_system->DumpTestInfo();
+		while (1);
 	}
 
-	cpu_memory[(0x100 + register_s)] = value;
+	cpu_memory[(0x0100 + register_s)] = value;
 	register_s--;
 }
 
 uint8_t CPU::Pop() {
-
+	
 	if(register_s == 0xFF) {
 		std::cout << std::endl << std::endl << "STACK UNDERFLOW" << std::endl << std::endl;
+		nes_system->DumpTestInfo();
+		while (1);
 	}
 
 	register_s++;
 	uint8_t return_value = cpu_memory[(0x100 + register_s)];
 
 	/* Clear the value on the stack location left behind. */
-	cpu_memory[(0x100 + register_s)] = 0;
+	cpu_memory[(0x0100 + register_s)] = 0;
 
 	return return_value;
 }
@@ -194,17 +199,17 @@ void CPU::PerformOAMDMA(uint8_t value) {
 }
 
 void CPU::GenerateNMI() {
-	/* Push PC low byte, PC high byte, and processor flags in that order. */
-	Push((uint8_t)(program_counter & 0xFF));
-	Push((uint8_t)(program_counter >> 8));
+	/* Push PC high byte, PC low byte, and processor flags in that order. */
+	Push((uint8_t) (program_counter >> 8));
+	Push((uint8_t) (program_counter & 0xFF));
 	Push(register_p);
 	program_counter = vector_nmi;
 }
 
 void CPU::GenerateIRQ() {
-	/* Push PC low byte, PC high byte, and processor flags in that order. */
-	Push((uint8_t) (program_counter &  0xFF));
+	/* Push PC high byte, PC low byte, and processor flags in that order. */
 	Push((uint8_t) (program_counter >> 8));
+	Push((uint8_t) (program_counter &  0xFF));
 	Push(register_p);
 	program_counter = vector_irq;
 }

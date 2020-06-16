@@ -102,9 +102,9 @@ void Emulator::Initialize() {
 
 	/* Test ROMs */
 	//nes_system->Initialize("Test/instr_test-v3/all_instrs.nes");
-	nes_system->Initialize("Test/instr_test-v3/official_only.nes");
+	//nes_system->Initialize("Test/instr_test-v3/official_only.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/01-implied.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/02-immediate.nes");
+	nes_system->Initialize("Test/instr_test-v3/rom_singles/02-immediate.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/03-zero_page.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/04-zp_xy.nes");
 	//nes_system->Initialize("Test/instr_test-v3/rom_singles/05-absolute.nes");
@@ -176,10 +176,9 @@ void Emulator::Loop() {
 			nes_system->Frame();
 		}
 
-		//if(nes_system->GetCPU()->GetProgramCounter() == 0xE976) {
-		//	nes_system->DumpTestInfo();
-		//	emulation_paused = true;
-		//}
+		if(nes_system->GetCPU()->GetProgramCounter() == 0xE601) {
+			emulation_paused = true;
+		}
 
 		//SDL_RenderClear(sdl_renderer);
 
@@ -191,14 +190,15 @@ void Emulator::Loop() {
 
 		frame_end = SDL_GetPerformanceCounter();
 		
-		/* Only update the frametime counter every 100 ticks. */
-		if(frame_end % 100 == 0) {
-			perf_freq = SDL_GetPerformanceFrequency();
-			frame_time = (frame_end - frame_start) / static_cast<double>(perf_freq);
-			frame_rate = 1 / (frame_time * 1000.0);
+		perf_freq = SDL_GetPerformanceFrequency();
+		frame_time = (frame_end - frame_start) / static_cast<double>(perf_freq);
+		frame_rate = 1 / (frame_time * 1000.0);
 
-			sprintf(title_buffer, "%f", (frame_time * 1000.0));
+		/* Only update the cycle counter every 1000 CPU clocks. */
+		if(nes_system->GetCPU()->CycleCount() % 1000 == 0) {
+			//sprintf(title_buffer, "%f", (frame_time * 1000.0));
 			//sprintf(title_buffer, "%f", frame_rate);
+			sprintf(title_buffer, "%li", nes_system->GetCPU()->CycleCount());
 			SDL_SetWindowTitle(sdl_window, title_buffer);
 		}
 
@@ -206,7 +206,7 @@ void Emulator::Loop() {
 			std::cout << "Frame Time: " << frame_time * 1000.0 << "ms" << '\n';
 		}
 
-		SDL_Delay(1);
+		//SDL_Delay(1);
 	}
 }
 
