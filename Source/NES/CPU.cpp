@@ -182,7 +182,7 @@ uint8_t CPU::Pop() {
 
 void CPU::Interrupt(interrupt_type_t interrupt_type) {
 
-	if(interrupt_type == IRQ_BRK) {
+	if(interrupt_type == INTERRUPT_BRK) {
 		/* Software interrupts add 1 to program counter. */
 		program_counter++;
 	}
@@ -194,7 +194,7 @@ void CPU::Interrupt(interrupt_type_t interrupt_type) {
 	uint8_t flags_to_push = BitCheck(register_p, STATUS_BIT_NEGATIVE)          << 7 |
 							BitCheck(register_p, STATUS_BIT_OVERFLOW)          << 6 |
 							                                                 1 << 5 | /* Will always be 1. */
-							                       (interrupt_type == IRQ_BRK) << 4 | /* Set to one if software interrupt. */
+							                       (interrupt_type == INTERRUPT_BRK) << 4 | /* Set to one if software interrupt. */
 							BitCheck(register_p, STATUS_BIT_DECIMAL)           << 3 |
 							BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE) << 2 |
 							BitCheck(register_p, STATUS_BIT_ZERO)              << 1 |
@@ -206,10 +206,10 @@ void CPU::Interrupt(interrupt_type_t interrupt_type) {
 	BitSet(register_p, STATUS_BIT_INTERRUPT_DISABLE);
 
 	switch(interrupt_type) {
-		case IRQ_NMI:
+		case INTERRUPT_NMI:
 			program_counter = vector_nmi;
 			break;
-		case IRQ_BRK:
+		case INTERRUPT_BRK:
 			program_counter = vector_irq;
 		default:
 			break;

@@ -61,7 +61,7 @@ void CPU::Step() {
 
 	switch(instruction) {
 		case 0x00:
-			Interrupt(IRQ_BRK);
+			Interrupt(INTERRUPT_BRK);
 			break;
 		case 0x01:
 			operand1 = Read(program_counter + 1);

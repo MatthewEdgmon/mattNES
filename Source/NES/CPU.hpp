@@ -52,8 +52,9 @@ typedef enum addressing_mode {
 } addressing_mode_t;
 
 typedef enum interrupt_type {
-	IRQ_NMI,
-	IRQ_BRK
+	INTERRUPT_NMI,
+	INTERRUPT_IRQ,
+	INTERRUPT_BRK
 } interrupt_type_t;
 
 typedef enum opcode {

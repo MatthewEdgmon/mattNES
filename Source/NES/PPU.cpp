@@ -245,7 +245,7 @@ void PPU::ProcessPostrenderScanline() {
 
 		/* Generate NMI if flag in PPUCTRL set. */
 		if(BitCheck(ppu_ctrl, PPU_CTRL_NMI_ENABLE)) {
-			nes_system->GetCPU()->Interrupt(IRQ_NMI);
+			nes_system->GetCPU()->Interrupt(INTERRUPT_NMI);
 		}
 
 	}
