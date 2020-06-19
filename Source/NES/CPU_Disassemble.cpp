@@ -134,7 +134,7 @@ void CPU::StepDisassembler() {
 		case 0x3D: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " AND " << HEX4((operand2 << 8) + operand1 + register_x) << '\n'; break;
 		case 0x3E: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " ROL " << HEX4((operand2 << 8) + operand1 + register_x) << '\n'; break;
 		case 0x3F: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0x40: std::cout << "      "                                         << " RTI " << HEX4((PeekStack(register_s + 3) << 8) + PeekStack(register_s + 2)) << '\n'; break;
+		case 0x40: std::cout << "      "                                         << " RTI " << HEX4((PeekMemory((0x100 + register_s + 3)) << 8) + PeekMemory(0x100 + register_s + 2)) << '\n'; break;
 		case 0x41: std::cout << " " << HEX2X(operand1) << "   "                  << " EOR INDX" << '\n'; break;
 		case 0x42: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0x43: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
@@ -166,7 +166,7 @@ void CPU::StepDisassembler() {
 		case 0x5D: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " EOR " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2(Read((operand2 << 8) + operand1) + register_x) << '\n'; break;
 		case 0x5E: std::cout << " " << HEX2X(operand1) << " " << HEX2X(operand2) << " LSR " << HEX4((operand2 << 8) + operand1 + register_x) << " = " << HEX2(Read((operand2 << 8) + operand1) + register_x) << '\n'; break;
 		case 0x5F: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
-		case 0x60: std::cout << "      "                                         << " RTS " << HEX4((PeekStack(register_s + 2) << 8) + PeekStack(register_s + 1)) << '\n'; break;
+		case 0x60: std::cout << "      "                                         << " RTS " << HEX4((PeekMemory((0x100 + register_s + 2)) << 8) + PeekMemory(0x100 + register_s + 1)) << '\n'; break;
 		case 0x61: std::cout << " " << HEX2X(operand1) << "   "                  << " ADC ?INDX?" << HEX2X(operand1) << '\n'; break;
 		case 0x62: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0x63: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;

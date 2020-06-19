@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "../BitOps.hpp"
+
 #define STATUS_BIT_CARRY             0
 #define STATUS_BIT_ZERO              1
 #define STATUS_BIT_INTERRUPT_DISABLE 2
@@ -88,17 +90,15 @@ class CPU {
 		uint8_t Read(uint16_t address);
 		void Write(uint16_t address, uint8_t value);
 
+		/* Read from CPU memory without causing any emulation side effects. */
+		uint8_t PeekMemory(uint16_t address);
+
 		void Push(uint8_t value);
 		uint8_t Pop();
 
 		void Interrupt(interrupt_type_t interrupt_type);
 
 		void PerformOAMDMA(uint8_t value);
-
-		/* Read from CPU memory without causing any emulation side effects. */
-		uint8_t PeekMemory(uint16_t address);
-		/* Read from CPU stack without causing any emulation side effects. */
-		uint8_t PeekStack(uint8_t stack_location) { return cpu_memory[(0x100 + stack_location)]; };
 
 		uint16_t GetProgramCounter() { return program_counter; };
 		uint8_t GetRegisterP() { return register_p; };
@@ -116,6 +116,29 @@ class CPU {
 		uint64_t CycleCount() { return cycles; };
 
 	private:
+		/* Updates CPU flags based on register value. */
+		void UpdateZeroNegative(uint8_t value) {
+			if(value == 0x00) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(value >= 0x80) { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+		};
+
+		/* For certain instructions, crossing a page boundary costs extra cycle(s). */
+		void CheckPageCross(uint16_t address_a, uint16_t address_b, uint8_t add_cycles) {
+			/* Determine page cross if high byte of two addresses differ. */
+			if ((address_a & 0xFF00) != (address_b & 0xFF00)) {
+				cycles += add_cycles;
+			}
+		}
+
+		/* Sets a specified bit in the flag register if the condition is true. */
+		void SetFlag(uint8_t flag_bit, bool condition) {
+			if(condition) {
+				BitSet(register_p, flag_bit);
+			} else {
+				BitClear(register_p, flag_bit);
+			}
+		}
+
 		NESSystem* nes_system;
 
 		uint8_t cpu_memory[0x800];
@@ -178,6 +201,8 @@ class CPU {
 		/* Size of each instruction in bytes. */
 		uint8_t instruction_sizes[0x100] = {
 			1, 2, // TODO: Fill in the rest of this struct
+			// TODO: Fix HACK
+			// TODO: Finish adding UpdateZeroNegative
 		};
 };
 

@@ -94,26 +94,6 @@ void CPU::Reset(bool hard) {
 	cycles = 0;
 }
 
-// TODO: Investigate whether each component needs it's own PeekMemory function. Maybe some carts reset settings on read? No idea.
-uint8_t CPU::PeekMemory(uint16_t address) {
-
-	uint8_t value = 0x00;
-
-		 if(address >= 0x0000 && address <= 0x1FFF) { value = cpu_memory[(address & 0x7FF)]; }                                /* Zero Page, mirrored every 0x800 bytes. */
-	//else if(address >= 0x2000 && address <= 0x3FFF) { value = nes_system->GetPPU()->ReadCPU((address & 0x2007)); }            /* PPU Register MMIO, mirrored every 8 bytes. */
-	//else if(address >= 0x4000 && address <= 0x4013) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	//else if(address == 0x4014)                      { value = nes_system->GetFloatingBus(); }                                 /* OAMDMA. */
-	//else if(address == 0x4015)                      { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	//else if(address >= 0x4016 && address <= 0x4017) { value = nes_system->GetControllerIO()->ReadIO(address); }               /* I/O. */
-	//else if(address >= 0x4018 && address <= 0x401F) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address >= 0x4020 && address <= 0xFFFF) { value = nes_system->GetCartridge()->GetMapper()->ReadCPU(address); }    /* Cartridge Memory Space */
-	else {
-		value = nes_system->GetFloatingBus();
-	}
-
-	return value;
-}
-
 // TODO: Implementing cycle accuracy should probably start here. Count cycles for reading etc...
 uint8_t CPU::Read(uint16_t address) {
 
@@ -151,6 +131,26 @@ void CPU::Write(uint16_t address, uint8_t value) {
 	return;
 }
 
+uint8_t CPU::PeekMemory(uint16_t address) {
+
+	uint8_t value = 0x00;
+
+	// TODO: These should probably all turn into their own side-effect free Peek function.
+	     if(address >= 0x0000 && address <= 0x1FFF) { value = cpu_memory[(address & 0x7FF)]; }                                /* Zero Page, mirrored every 0x800 bytes. */
+	else if(address >= 0x2000 && address <= 0x3FFF) { value = nes_system->GetPPU()->ReadCPU((address & 0x2007)); }            /* PPU Register MMIO, mirrored every 8 bytes. */
+	else if(address >= 0x4000 && address <= 0x4013) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
+	else if(address == 0x4014)                      { value = nes_system->GetFloatingBus(); }                                 /* OAMDMA. */
+	else if(address == 0x4015)                      { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
+	else if(address >= 0x4016 && address <= 0x4017) { value = nes_system->GetControllerIO()->ReadIO(address); }               /* I/O. */
+	else if(address >= 0x4018 && address <= 0x401F) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
+	else if(address >= 0x4020 && address <= 0xFFFF) { value = nes_system->GetCartridge()->GetMapper()->ReadCPU(address); }    /* Cartridge Memory Space */
+	else {
+		value = nes_system->GetFloatingBus();
+	}
+
+	return value;
+}
+
 void CPU::Push(uint8_t value) {
 
 	if(register_s == 0x00) {
@@ -182,6 +182,13 @@ uint8_t CPU::Pop() {
 
 void CPU::Interrupt(interrupt_type_t interrupt_type) {
 
+	/* When I flag is on, all but NMI is ignored. */
+	if(BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE)) {
+		if(interrupt_type == INTERRUPT_BRK || interrupt_type == INTERRUPT_IRQ) {
+			return;
+		}
+	}
+
 	if(interrupt_type == INTERRUPT_BRK) {
 		/* Software interrupts add 1 to program counter. */
 		program_counter++;
@@ -194,7 +201,7 @@ void CPU::Interrupt(interrupt_type_t interrupt_type) {
 	uint8_t flags_to_push = BitCheck(register_p, STATUS_BIT_NEGATIVE)          << 7 |
 							BitCheck(register_p, STATUS_BIT_OVERFLOW)          << 6 |
 							                                                 1 << 5 | /* Will always be 1. */
-							                       (interrupt_type == INTERRUPT_BRK) << 4 | /* Set to one if software interrupt. */
+							                 (interrupt_type == INTERRUPT_BRK) << 4 | /* Set to one if software interrupt. */
 							BitCheck(register_p, STATUS_BIT_DECIMAL)           << 3 |
 							BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE) << 2 |
 							BitCheck(register_p, STATUS_BIT_ZERO)              << 1 |
