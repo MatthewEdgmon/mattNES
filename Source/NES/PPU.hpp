@@ -87,7 +87,7 @@ class PPU {
 		void SetMirroringMode();
 
 		/* Read from PPU memory without causing any emulation side effects. */
-		uint8_t ReadDebug(uint16_t address) { return ppu_memory[address]; };
+		uint8_t PeekMemory(uint16_t address) { return ppu_memory[address]; };
 
 		uint32_t* GetVideoBuffer() { return video_buffer; };
 

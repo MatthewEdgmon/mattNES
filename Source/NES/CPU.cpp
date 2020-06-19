@@ -94,8 +94,8 @@ void CPU::Reset(bool hard) {
 	cycles = 0;
 }
 
-// TODO: Investigate whether each component needs it's own ReadDebug function. Maybe some carts reset settings on read? No idea.
-uint8_t CPU::ReadDebug(uint16_t address) {
+// TODO: Investigate whether each component needs it's own PeekMemory function. Maybe some carts reset settings on read? No idea.
+uint8_t CPU::PeekMemory(uint16_t address) {
 
 	uint8_t value = 0x00;
 

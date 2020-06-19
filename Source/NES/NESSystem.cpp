@@ -118,15 +118,15 @@ void NESSystem::DumpTestInfo() {
 	std::cout << '\n';
 	
 	/* Check to see which test ROM type is running. */
-	if((GetCPU()->ReadDebug(0x6001) == 0xDE) && (GetCPU()->ReadDebug(0x6002) == 0xB0) && (GetCPU()->ReadDebug(0x6003) == 0x61)) {
+	if((GetCPU()->PeekMemory(0x6001) == 0xDE) && (GetCPU()->PeekMemory(0x6002) == 0xB0) && (GetCPU()->PeekMemory(0x6003) == 0x61)) {
 
-		if(GetCPU()->ReadDebug(0x6000) == 0x81) {
+		if(GetCPU()->PeekMemory(0x6000) == 0x81) {
 			std::cout << "Test ROM needs reset. Resetting...\n";
 			// TODO: Remove this SDL_Delay when test suite script is made.
 			SDL_Delay(1000);
 			Reset(false);
 			return;
-		} else if(GetCPU()->ReadDebug(0x6000) == 0x80) {
+		} else if(GetCPU()->PeekMemory(0x6000) == 0x80) {
 			std::cout << "Test ROM still testing." << '\n';
 			std::cout << "[Test ROM (0x6004)]: ";
 			//return;
@@ -136,13 +136,13 @@ void NESSystem::DumpTestInfo() {
 		}
 
 		for(size_t i = 0; i < 64; i++) {
-			printf("%c", GetCPU()->ReadDebug(0x6004 + i));
+			printf("%c", GetCPU()->PeekMemory(0x6004 + i));
 		}
 
 		std::cout << '\n';
 
 	} else {
-		std::cout << "Test ROM results: " << HEX2X(GetCPU()->ReadDebug(0x0002)) << HEX2X(GetCPU()->ReadDebug(0x0003)) << '\n';
+		std::cout << "Test ROM results: " << HEX2X(GetCPU()->PeekMemory(0x0002)) << HEX2X(GetCPU()->PeekMemory(0x0003)) << '\n';
 	}
 
 	return;

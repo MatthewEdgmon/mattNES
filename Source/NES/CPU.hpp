@@ -84,7 +84,7 @@ class CPU {
 		void StepDisassembler(); /* Ouput debugging information for the current step. */
 
 		/* ----------------------------------------------------------------------------------------------- */
-		
+
 		uint8_t Read(uint16_t address);
 		void Write(uint16_t address, uint8_t value);
 
@@ -96,7 +96,7 @@ class CPU {
 		void PerformOAMDMA(uint8_t value);
 
 		/* Read from CPU memory without causing any emulation side effects. */
-		uint8_t ReadDebug(uint16_t address);
+		uint8_t PeekMemory(uint16_t address);
 		/* Read from CPU stack without causing any emulation side effects. */
 		uint8_t PeekStack(uint8_t stack_location) { return cpu_memory[(0x100 + stack_location)]; };
 
@@ -178,8 +178,6 @@ class CPU {
 		/* Size of each instruction in bytes. */
 		uint8_t instruction_sizes[0x100] = {
 			1, 2, // TODO: Fill in the rest of this struct
-			// TODO: make inline function update negative/zero flag
-			// TODO: Change memory map back to std::vector
 		};
 };
 

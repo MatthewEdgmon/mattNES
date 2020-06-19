@@ -40,12 +40,12 @@ inline uint16_t CalculateIndirect(CPU* cpu, uint8_t operand1, uint8_t operand2) 
 	/* Bug on NMOS 6502: JMP ignores page crossing on page barrier (0xXXFF). */
 	if(operand1 == 0xFF) {
 		/* Ignore LSB, address fetched is from low byte 0x10FF and high byte 0x1000. */
-		target  = cpu->ReadDebug((operand2 << 8) + operand1);
-		target += cpu->ReadDebug((operand2 << 8)) << 8;
+		target  = cpu->PeekMemory((operand2 << 8) + operand1);
+		target += cpu->PeekMemory((operand2 << 8)) << 8;
 	} else {
 		/* Perform expected behaviour. */
-		target  = cpu->ReadDebug((operand2 << 8) + operand1);
-		target += cpu->ReadDebug((operand2 << 8) + operand1 + 1) << 8;
+		target  = cpu->PeekMemory((operand2 << 8) + operand1);
+		target += cpu->PeekMemory((operand2 << 8) + operand1 + 1) << 8;
 	}
 
 	return target;
@@ -53,7 +53,7 @@ inline uint16_t CalculateIndirect(CPU* cpu, uint8_t operand1, uint8_t operand2) 
 
 inline uint16_t CalculateIndirectIndexed(CPU* cpu, uint8_t operand1) {
 	/* Read address stored at operand1 in zero page. */
-	return ((cpu->ReadDebug(operand1 + 1) << 8) + cpu->ReadDebug(operand1) + cpu->GetRegisterY());
+	return ((cpu->PeekMemory(operand1 + 1) << 8) + cpu->PeekMemory(operand1) + cpu->GetRegisterY());
 }
 
 void CPU::StepDisassembler() {
@@ -231,7 +231,7 @@ void CPU::StepDisassembler() {
 		case 0x9E: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0x9F: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xA0: std::cout << " " << HEX2X(operand1) << "   "                  << " LDY " << HEX2(operand1) << '\n'; break;
-		case 0xA1: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA " << HEX2(operand1) << ", X = " << HEX2X(ReadDebug(operand1 + register_x)) << '\n'; break;
+		case 0xA1: std::cout << " " << HEX2X(operand1) << "   "                  << " LDA " << HEX2(operand1) << ", X = " << HEX2X(PeekMemory(operand1 + register_x)) << '\n'; break;
 		case 0xA2: std::cout << " " << HEX2X(operand1) << "   "                  << " LDX " << HEX2(operand1) << '\n'; break;
 		case 0xA3: std::cout << "      "                                         << " Illegal Opcode " << HEX2(instruction) << '\n'; break;
 		case 0xA4: std::cout << " " << HEX2X(operand1) << "   "                  << " LDY 0x00" << HEX2X(operand1) << " = " << HEX2X(Read(operand1)) << '\n'; break;

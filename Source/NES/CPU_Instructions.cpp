@@ -54,8 +54,8 @@ void CPU::Step() {
 	uint8_t result = 0;
 
 	if(show_disassembly) {
-		operand1 = ReadDebug(program_counter + 1);
-		operand2 = ReadDebug(program_counter + 2);
+		operand1 = PeekMemory(program_counter + 1);
+		operand2 = PeekMemory(program_counter + 2);
 		StepDisassembler();
 	}
 
