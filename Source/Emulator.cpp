@@ -97,42 +97,50 @@ void Emulator::Initialize() {
 
 	// SDL Initializtion Finished Here.
 
-	/* Create emulated system. */
-	nes_system = new NESSystem(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
-
 	/* Test ROMs */
-	//nes_system->Initialize("Test/instr_test-v3/all_instrs.nes");
-	//nes_system->Initialize("Test/instr_test-v3/official_only.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/01-implied.nes");
-	nes_system->Initialize("Test/instr_test-v3/rom_singles/02-immediate.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/03-zero_page.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/04-zp_xy.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/05-absolute.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/06-abs_xy.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/07-ind_x.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/08-ind_y.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/09-branches.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/10-stack.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/11-jmp_jsr.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/12-rts.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/13-rti.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/14-brk.nes");
-	//nes_system->Initialize("Test/instr_test-v3/rom_singles/15-special.nes");
+	//file_name = "Test/instr_test-v3/all_instrs.nes";
+	//file_name = "Test/instr_test-v3/official_only.nes";
+	file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/02-immediate.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/03-zero_page.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/04-zp_xy.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/05-absolute.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/06-abs_xy.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/07-ind_x.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/08-ind_y.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/09-branches.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/10-stack.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/11-jmp_jsr.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/12-rts.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/13-rti.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/14-brk.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/15-special.nes";
 
-	//nes_system->Initialize("Test/instr_misc/instr_misc.nes");
+	//file_name = "Test/other/nestest.nes";
 
-	//nes_system->Initialize("Test/ppu_vbl_nmi/ppu_vbl_nmi.nes");
-	//nes_system->Initialize("Test/nrom368/test1.nes");
-	//nes_system->Initialize("Test/spritecans-2011/spritecans.nes");
+	//file_name = "Test/instr_misc/instr_misc.nes");
+
+	//file_name = "Test/ppu_vbl_nmi/ppu_vbl_nmi.nes";
+	//file_name = "Test/nrom368/test1.nes";
+	//file_name = "Test/spritecans-2011/spritecans.nes";
 
 	/* NROM Games */
-	//nes_system->Initialize("ROMs/Baseball.nes");
-	//nes_system->Initialize("ROMs/Donkey Kong.nes");
-	//nes_system->Initialize("ROMs/Mario Bros..nes");
-	//nes_system->Initialize("ROMs/Pinball.nes");
+	//file_name = "ROMs/Baseball.nes";
+	//file_name = "ROMs/Donkey Kong.nes";
+	//file_name = "ROMs/Mario Bros..nes";
+	//file_name = "ROMs/Pinball.nes";
 
 	/* Hard NROM Games */
-	//nes_system->Initialize("ROMs/Super Mario Bros..nes");
+	//file_name = "ROMs/Super Mario Bros..nes";
+
+	/* Create emulated system. */
+	nes_system = new NESSystem(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
+	nes_system->Initialize(file_name);
+
+	/* Set program counter to automated mode for nestest.nes */
+	if(file_name == "Test/other/nestest.nes") {
+		nes_system->GetCPU()->SetProgramCounter(0xC000);
+	}
 }
 
 void Emulator::Loop() {

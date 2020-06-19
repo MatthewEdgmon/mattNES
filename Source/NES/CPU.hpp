@@ -36,6 +36,33 @@
 
 class NESSystem;
 
+typedef enum addressing_mode {
+	IMP,
+	IMM,
+	ZPG,
+	ZPX,
+	ZPY,
+	REL,
+	ABS,
+	ABX,
+	ABY,
+	IND,
+	IIN,
+	INI
+} addressing_mode_t;
+
+typedef enum interrupt_type {
+	IRQ_NMI,
+	IRQ_BRK
+} interrupt_type_t;
+
+typedef enum opcode {
+	ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
+	CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
+	JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
+	RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA
+} opcode_t;
+
 class CPU {
 
 	public:
@@ -63,10 +90,9 @@ class CPU {
 		void Push(uint8_t value);
 		uint8_t Pop();
 
-		void PerformOAMDMA(uint8_t value);
+		void Interrupt(interrupt_type_t interrupt_type);
 
-		void GenerateNMI();
-		void GenerateIRQ();
+		void PerformOAMDMA(uint8_t value);
 
 		/* Read from CPU memory without causing any emulation side effects. */
 		uint8_t ReadDebug(uint16_t address);
@@ -79,6 +105,8 @@ class CPU {
 		uint8_t GetRegisterX() { return register_x; };
 		uint8_t GetRegisterY() { return register_y; };
 		uint8_t GetRegisterS() { return register_s; };
+
+		void SetProgramCounter(uint16_t value) { program_counter = value; };
 
 		bool IsInTestMode() { return test_mode; };
 
@@ -116,6 +144,7 @@ class CPU {
 		uint8_t dis_operand2;
 
 		bool halted;
+		bool illegal_opcode_triggered;
 		bool halt_on_illegal_opcode;
 		bool increment_pc;
 
@@ -125,28 +154,32 @@ class CPU {
 
 		uint64_t cycles;
 
-	private:
-		typedef enum AddressingMode {
-			IMP,
-			IMM,
-			ZPG,
-			ZPX,
-			ZPY,
-			REL,
-			ABS,
-			ABX,
-			ABY,
-			IND,
-			IIN,
-			INI
-		} addressing_mode_t;
+		/* How many clock cycles each instruction takes. */
+		uint8_t cycle_sizes[0x100] = {
+			7, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 0, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+            6, 6, 0, 0, 3, 3, 5, 0, 4, 2, 2, 0, 4, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+            6, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+            6, 6, 0, 0, 0, 3, 5, 0, 4, 2, 2, 0, 5, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+            0, 6, 0, 0, 3, 3, 3, 0, 2, 0, 2, 0, 4, 4, 4, 0,
+            2, 6, 0, 0, 4, 4, 4, 0, 2, 5, 2, 0, 0, 5, 0, 0,
+            2, 6, 2, 0, 3, 3, 3, 0, 2, 2, 2, 0, 4, 4, 4, 0,
+            2, 5, 0, 0, 4, 4, 4, 0, 2, 4, 2, 0, 4, 4, 4, 0,
+            2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 0, 4, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
+            2, 6, 0, 0, 3, 3, 5, 0, 2, 2, 2, 2, 4, 4, 6, 0,
+            2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0
+		};
 
-		typedef enum Opcode {
-			ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
-			CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
-			JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
-			RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA
-		} opcode_t;
+		/* Size of each instruction in bytes. */
+		uint8_t instruction_sizes[0x100] = {
+			1, 2, // TODO: Fill in the rest of this struct
+			// TODO: make inline function update negative/zero flag
+			// TODO: Change memory map back to std::vector
+		};
 };
 
 #endif /* __CPU_HPP__ */

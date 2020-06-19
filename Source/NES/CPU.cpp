@@ -51,6 +51,7 @@ void CPU::Initialize() {
 	}
 
 	halted = false;
+	illegal_opcode_triggered = false;
 	halt_on_illegal_opcode = false;
 	increment_pc = false;
 	test_mode = false;
@@ -179,6 +180,42 @@ uint8_t CPU::Pop() {
 	return return_value;
 }
 
+void CPU::Interrupt(interrupt_type_t interrupt_type) {
+
+	if(interrupt_type == IRQ_BRK) {
+		/* Software interrupts add 1 to program counter. */
+		program_counter++;
+	}
+
+	/* Push PC high byte, PC low byte, and processor flags in that order. */
+	Push(program_counter >> 8);
+	Push(program_counter);
+
+	uint8_t flags_to_push = BitCheck(register_p, STATUS_BIT_NEGATIVE)          << 7 |
+							BitCheck(register_p, STATUS_BIT_OVERFLOW)          << 6 |
+							                                                 1 << 5 | /* Will always be 1. */
+							                       (interrupt_type == IRQ_BRK) << 4 | /* Set to one if software interrupt. */
+							BitCheck(register_p, STATUS_BIT_DECIMAL)           << 3 |
+							BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE) << 2 |
+							BitCheck(register_p, STATUS_BIT_ZERO)              << 1 |
+							BitCheck(register_p, STATUS_BIT_CARRY);
+	
+	Push(flags_to_push);
+
+	/* Set interrupt disable flag. */
+	BitSet(register_p, STATUS_BIT_INTERRUPT_DISABLE);
+
+	switch(interrupt_type) {
+		case IRQ_NMI:
+			program_counter = vector_nmi;
+			break;
+		case IRQ_BRK:
+			program_counter = vector_irq;
+		default:
+			break;
+	}
+}
+
 void CPU::PerformOAMDMA(uint8_t value) {
 	
 	/* Check to see if on even or odd CPU cycle. */
@@ -196,20 +233,4 @@ void CPU::PerformOAMDMA(uint8_t value) {
 		nes_system->GetPPU()->WriteOAM(Read(oam_dma_page + i));
 		cycles += 2;
 	}
-}
-
-void CPU::GenerateNMI() {
-	/* Push PC high byte, PC low byte, and processor flags in that order. */
-	Push((uint8_t) (program_counter >> 8));
-	Push((uint8_t) (program_counter & 0xFF));
-	Push(register_p);
-	program_counter = vector_nmi;
-}
-
-void CPU::GenerateIRQ() {
-	/* Push PC high byte, PC low byte, and processor flags in that order. */
-	Push((uint8_t) (program_counter >> 8));
-	Push((uint8_t) (program_counter &  0xFF));
-	Push(register_p);
-	program_counter = vector_irq;
 }

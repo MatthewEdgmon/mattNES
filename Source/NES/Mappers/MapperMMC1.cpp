@@ -99,21 +99,21 @@ void MapperMMC1::Initialize(Cartridge* cartridge) {
 
 	/* First ROM bank is at the top. */
 	for(size_t i = 0; i < prg_rom_bank_1->size; i++) {
-		prg_rom_bank_1->data[i] = cartridge->GetFileMemory().at(i + cartridge->GetHeaderOffset());
+		prg_rom_bank_1->data[i] = cartridge->GetFileMemory()[i + cartridge->GetHeaderOffset()];
 	}
 
 	/* Second ROM bank is 0x4000 bytes after the first. */
 	for(size_t i = 0; i < prg_rom_bank_2->size; i++) {
-		prg_rom_bank_2->data[i] = cartridge->GetFileMemory().at(i + 0x4000 + cartridge->GetHeaderOffset());
+		prg_rom_bank_2->data[i] = cartridge->GetFileMemory()[i + 0x4000 + cartridge->GetHeaderOffset()];
 	}
 
 	/* First CHR ROM bank is 0x8000 bytes after PRG ROM. */
 	for(size_t i = 0; i < chr_rom_bank_1->size; i++) {
-		chr_rom_bank_1->data[i] = cartridge->GetFileMemory().at(i + 0x4000 + 0x4000 + cartridge->GetHeaderOffset());
+		chr_rom_bank_1->data[i] = cartridge->GetFileMemory()[i + 0x4000 + 0x4000 + cartridge->GetHeaderOffset()];
 	}
 
 	for(size_t i = 0; i < chr_rom_bank_2->size; i++) {
-		chr_rom_bank_2->data[i] = cartridge->GetFileMemory().at(i + 0x4000 + 0x4000 + 0x4000 + cartridge->GetHeaderOffset());
+		chr_rom_bank_2->data[i] = cartridge->GetFileMemory()[i + 0x4000 + 0x4000 + 0x4000 + cartridge->GetHeaderOffset()];
 	}
 }
 

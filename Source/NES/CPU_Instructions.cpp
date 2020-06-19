@@ -30,7 +30,7 @@
 
 void CPU::IllegalOpcode(uint8_t opcode) {
 
-	if(halt_on_illegal_opcode) {
+	if(halt_on_illegal_opcode && illegal_opcode_triggered) {
 		std::cout << "Caught Illegal Opcode " << HEX2(opcode) << " at " << HEX4(program_counter) << '\n';
 		nes_system->DumpTestInfo();
 
@@ -61,16 +61,15 @@ void CPU::Step() {
 
 	switch(instruction) {
 		case 0x00:
-			program_counter += 1;
-			GenerateIRQ();
-			cycles += 7;
+			Interrupt(IRQ_BRK);
 			break;
 		case 0x01:
-			/* Indirect X Index added here to force wrap around instead of carry in the line after. */
-			operand1 = (Read(program_counter + 1) + register_x);
-			std::cout << "ORA INDX unimp" << '\n';
+			operand1 = Read(program_counter + 1);
+			operand1 = Read(operand1 + register_x);
+			register_a |= operand1;
+			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+            if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x02: IllegalOpcode(0x02); break;
 		case 0x03: IllegalOpcode(0x03); break;
@@ -82,7 +81,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x06:
 			operand1 = Read(program_counter + 1);
@@ -94,12 +92,27 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
-		case 0x07: IllegalOpcode(0x07); break;
+		case 0x07:
+			illegal_opcode_triggered = true;
+			/* ASL */
+			operand1 = Read(program_counter + 1);
+			operand2 = Read(operand1);
+			if(operand2 &  0x80)       { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			operand2 <<= 1;
+			Write(operand1, operand2);
+			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			/* ORA */
+			operand1 = Read(program_counter + 1);
+			operand1 = Read(operand1);
+			register_a |= operand1;
+			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+            if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			program_counter += 1;
+			break;
 		case 0x08:
 			Push(register_p);
-			cycles += 3;
 			break;
 		case 0x09:
 			operand1 = Read(program_counter + 1);
@@ -107,7 +120,6 @@ void CPU::Step() {
             if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0x0A:
 			/* Check if bit 7 is set to preserve value. */
@@ -115,7 +127,6 @@ void CPU::Step() {
 			register_a <<= 1;
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 5;
 			break;
 		case 0x0B: IllegalOpcode(0x0B); break;
 		case 0x0C: IllegalOpcode(0x0C); break;
@@ -126,7 +137,6 @@ void CPU::Step() {
             if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x0E:
 			operand1 = Read(program_counter + 1);
@@ -139,7 +149,6 @@ void CPU::Step() {
 			if(result == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x0F: IllegalOpcode(0x0F); break;
 		case 0x10:
@@ -150,12 +159,10 @@ void CPU::Step() {
 				program_counter += (int8_t)operand1;
 				cycles += 1;
 			}
-			cycles += 2;
 			break;
 		case 0x11:
 			std::cout << "ORA INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0x12: IllegalOpcode(0x12); break;
 		case 0x13: IllegalOpcode(0x13); break;
@@ -168,7 +175,6 @@ void CPU::Step() {
             if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x16:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -185,12 +191,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x17: IllegalOpcode(0x17); break;
 		case 0x18:
 			BitClear(register_p, STATUS_BIT_CARRY);
-			cycles += 2;
 			break;
 		case 0x19:
 			operand1 = Read(program_counter + 1);
@@ -199,7 +203,7 @@ void CPU::Step() {
             if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x1A: IllegalOpcode(0x1A); break;
 		case 0x1B: IllegalOpcode(0x1B); break;
@@ -211,7 +215,7 @@ void CPU::Step() {
             if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
             if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x1E:
 			operand1 = Read(program_counter + 1);
@@ -228,7 +232,6 @@ void CPU::Step() {
 			if(result == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x1F: IllegalOpcode(0x1F); break;
 		case 0x20:
@@ -240,12 +243,14 @@ void CPU::Step() {
 			Push(program_counter);
 			program_counter = (operand2 << 8) + operand1;
 			increment_pc = false;
-			cycles += 6;
 			break;
 		case 0x21:
-			std::cout << "AND INDX unimp" << '\n';
+			operand1 = Read(program_counter + 1);
+			operand1 = Read(operand1 + register_x); // TODO: Not done right.
+			register_a &= operand1;
+			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x22: IllegalOpcode(0x22); break;
 		case 0x23: IllegalOpcode(0x23); break;
@@ -256,16 +261,14 @@ void CPU::Step() {
 			if(BitCheck(operand1, 6))  { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
 			if(BitCheck(operand1, 7))  { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x25:
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1);
-			register_a &= operand2;
+			operand1 = Read(operand1);
+			register_a &= operand1;
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x26:
 			operand1 = Read(program_counter + 1);
@@ -301,12 +304,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0x27: IllegalOpcode(0x27); break;
 		case 0x28:
 			register_p = Pop();
-			cycles += 4;
 			break;
 		case 0x29:
 			operand1 = Read(program_counter + 1);
@@ -314,7 +315,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0x2A:
 			/* Check if carry flag is set to preserve value. */
@@ -345,7 +345,6 @@ void CPU::Step() {
 			}
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x2B: IllegalOpcode(0x2B); break;
 		case 0x2C:
@@ -356,7 +355,6 @@ void CPU::Step() {
 			if(BitCheck(operand1, 6))        { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
 			if(BitCheck(operand1, 7))        { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x2D:
 			operand1 = Read(program_counter + 1);
@@ -365,7 +363,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x2E:
 			operand1 = Read(program_counter + 1);
@@ -401,23 +398,20 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x2F: IllegalOpcode(0x2F); break;
 		case 0x30:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(BitCheck(register_p, STATUS_BIT_NEGATIVE)) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
-				cycles += 1; // +2 if page
+				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0x31:
 			std::cout << "AND INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0x32: IllegalOpcode(0x32); break;
 		case 0x33: IllegalOpcode(0x33); break;
@@ -430,7 +424,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x36:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -466,12 +459,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x37: IllegalOpcode(0x37); break;
 		case 0x38:
 			BitSet(register_p, STATUS_BIT_CARRY);
-			cycles += 2;
 			break;
 		case 0x39:
 			operand1 = Read(program_counter + 1);
@@ -480,7 +471,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x3A: IllegalOpcode(0x3A); break;
 		case 0x3B: IllegalOpcode(0x3B); break;
@@ -492,7 +483,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x3E:
 			operand1 = Read(program_counter + 1);
@@ -528,7 +519,6 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x3F: IllegalOpcode(0x3F); break;
 		case 0x40:
@@ -537,12 +527,14 @@ void CPU::Step() {
 			program_counter  = Pop() << 8;
 			program_counter += Pop();
 			increment_pc = false;
-			cycles += 6;
 			break;
 		case 0x41:
-			std::cout << "ROL INDX unimp" << '\n';
+			operand1 = Read(program_counter + 1);
+			operand1 = Read(operand1 + register_x);
+			register_a ^= operand1;
+			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x42: IllegalOpcode(0x42); break;
 		case 0x43: IllegalOpcode(0x43); break;
@@ -554,7 +546,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x46:
 			operand1 = Read(program_counter + 1);
@@ -566,12 +557,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0x47: IllegalOpcode(0x47); break;
 		case 0x48:
 			Push(register_a);
-			cycles += 3;
 			break;
 		case 0x49:
 			operand1 = Read(program_counter + 1);
@@ -579,7 +568,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0x4A:
 			/* Check if bit 7 is set to preserve value. */
@@ -591,7 +579,6 @@ void CPU::Step() {
 			register_a >>= 1;
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x4B: IllegalOpcode(0x4B); break;
 		case 0x4C:
@@ -599,7 +586,6 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			program_counter = (operand2 << 8) + operand1;
 			increment_pc = false;
-			cycles += 3;
 			break;
 		case 0x4D:
 			operand1 = Read(program_counter + 1);
@@ -608,7 +594,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x4E:
 			operand1 = Read(program_counter + 1);
@@ -625,23 +610,21 @@ void CPU::Step() {
 			if(result == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x4F: IllegalOpcode(0x4F); break;
 		case 0x50:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(!BitCheck(register_p, STATUS_BIT_OVERFLOW)) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
-				cycles += 1; // +2 if page
+				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0x51:
 			std::cout << "EOR INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 5; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x52: IllegalOpcode(0x52); break;
 		case 0x53: IllegalOpcode(0x53); break;
@@ -654,7 +637,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x56:
 			/* Zero Page X Index added here to force wrap around here instead of carry in the line after. */
@@ -667,12 +649,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x57: IllegalOpcode(0x57); break;
 		case 0x58:
 			BitClear(register_p, STATUS_BIT_INTERRUPT_DISABLE);
-			cycles += 2;
 			break;
 		case 0x59:
 			operand1 = Read(program_counter + 1);
@@ -681,7 +661,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x5A: IllegalOpcode(0x5A); break;
 		case 0x5B: IllegalOpcode(0x5B); break;
@@ -693,7 +673,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x5E:
 			operand1 = Read(program_counter + 1);
@@ -710,19 +690,27 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 7;
 			break;
 		case 0x5F: IllegalOpcode(0x5F); break;
 		case 0x60:
 			program_counter =  Pop();
 			program_counter |= Pop() << 8;
 			increment_pc = false;
-			cycles += 6;
 			break;
 		case 0x61:
-			std::cout << "ADC INDX unimp" << '\n';
+			/* Zero Page X Index added here to force wrap around here instead of carry in the line after. */
+			operand1 = Read(program_counter + 1) + register_x;
+			operand1 = Read(operand1);
+			result = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
+			/* Check carry/unsigned overflow. */
+			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			/* Check signed overflow. */
+			if((register_a ^ result) & (operand1 ^ result) & 0x80)
+									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			register_a = (uint8_t) result; 
+			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x62: IllegalOpcode(0x62); break;
 		case 0x63: IllegalOpcode(0x63); break;
@@ -740,7 +728,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x66:
 			operand1 = Read(program_counter + 1);
@@ -776,14 +763,12 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0x67: IllegalOpcode(0x67); break;
 		case 0x68:
 			register_a = Pop();
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 4;
 			break;
 		case 0x69:
 			operand1 = Read(program_counter + 1);
@@ -797,7 +782,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0x6A:
 			/* Check if carry flag is set to preserve value. */
@@ -828,7 +812,6 @@ void CPU::Step() {
 			}
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x6B: IllegalOpcode(0x6B); break;
 		case 0x6C:
@@ -845,7 +828,6 @@ void CPU::Step() {
 				program_counter += Read((operand2 << 8) + operand1 + 1) << 8;
 			}
 			increment_pc = false;
-			cycles += 3;
 			break;
 		case 0x6D:
 			operand1 = Read(program_counter + 1);
@@ -860,7 +842,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x6E:
 			operand1 = Read(program_counter + 1);
@@ -896,23 +877,21 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x6F: IllegalOpcode(0x6F); break;
 		case 0x70:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(BitCheck(register_p, STATUS_BIT_OVERFLOW)) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0x71:
 			std::cout << "ADC INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 5; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x72: IllegalOpcode(0x72); break;
 		case 0x73: IllegalOpcode(0x73); break;
@@ -931,7 +910,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x76:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -967,12 +945,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x77: IllegalOpcode(0x77); break;
 		case 0x78:
 			BitSet(register_p, STATUS_BIT_INTERRUPT_DISABLE);
-			cycles += 2;
 			break;
 		case 0x79:
 			operand1 = Read(program_counter + 1);
@@ -987,7 +963,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x7A: IllegalOpcode(0x7A); break;
 		case 0x7B: IllegalOpcode(0x7B); break;
@@ -1005,7 +981,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0x7E:
 			operand1 = Read(program_counter + 1);
@@ -1041,14 +1017,14 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0x7F: IllegalOpcode(0x7F); break;
 		case 0x80: IllegalOpcode(0x80); break;
 		case 0x81:
-			std::cout << "STA INDX unimp" << '\n';
+			operand1 = Read(program_counter + 1);
+			operand1 = Read(operand1 + register_x);
+			Write(operand1, register_a);
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x82: IllegalOpcode(0x82); break;
 		case 0x83: IllegalOpcode(0x83); break;
@@ -1056,33 +1032,28 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			Write(operand1, register_y);
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x85:
 			operand1 = Read(program_counter + 1);
 			Write(operand1, register_a);
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x86:
 			operand1 = Read(program_counter + 1);
 			Write(operand1, register_x);
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0x87: IllegalOpcode(0x87); break;
 		case 0x88:
 			register_y--;
 			if(register_y == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x89: IllegalOpcode(0x89); break;
 		case 0x8A:
 			register_a = register_x;
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x8B: IllegalOpcode(0x8B); break;
 		case 0x8C:
@@ -1090,32 +1061,28 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			Write(((operand2 << 8) + operand1), register_y);
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x8D:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Write(((operand2 << 8) + operand1), register_a);
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x8E:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Write(((operand2 << 8) + operand1), register_x);
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0x8F: IllegalOpcode(0x8F); break;
 		case 0x90:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(!BitCheck(register_p, STATUS_BIT_CARRY)) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0x91:
 			/* Read location from Zero-Page to load from. */
@@ -1127,7 +1094,6 @@ void CPU::Step() {
 			/* Finally, set the memory location to the contents of register A from operand 1 and 2 plus register Y. */
 			Write(Read(((operand2 << 8) + operand1) + register_y), register_a);
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0x92: IllegalOpcode(0x92); break;
 		case 0x93: IllegalOpcode(0x93); break;
@@ -1136,39 +1102,33 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1) + register_x;
 			Write(operand1, register_y);
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x95:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
 			operand1 = Read(program_counter + 1) + register_x;
 			Write(operand1, register_a);
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x96:
 			/* Zero Page Y Index added here to force wrap around instead of carry in the line after. */
 			operand1 = Read(program_counter + 1) + register_y;
 			Write(operand1, register_a);
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0x97: IllegalOpcode(0x97); break;
 		case 0x98:
 			register_a = register_y;
 			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0x99:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Write(((operand2 << 8) + operand1 + register_y), register_a);
 			program_counter += 2;
-			cycles += 5;
 			break;
 		case 0x9A:
 			register_s = register_x;
-			cycles += 2;
 			break;
 		case 0x9B: IllegalOpcode(0x9B); break;
 		case 0x9C: IllegalOpcode(0x9C); break;
@@ -1177,7 +1137,6 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			Write(((operand2 << 8) + operand1 + register_x), register_a);
 			program_counter += 2;
-			cycles += 5;
 			break;
 		case 0x9E: IllegalOpcode(0x9E); break;
 		case 0x9F: IllegalOpcode(0x9F); break;
@@ -1187,12 +1146,14 @@ void CPU::Step() {
 			if(register_y == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xA1:
-			std::cout << "LDA INDX unimp" << '\n';
+			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
+			operand1 = Read(program_counter + 1) + register_x;
+			register_a = operand1;
+			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0xA2:
 			operand1 = Read(program_counter + 1);
@@ -1200,7 +1161,6 @@ void CPU::Step() {
 			if(register_x == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xA3: IllegalOpcode(0xA3); break;
 		case 0xA4:
@@ -1209,7 +1169,6 @@ void CPU::Step() {
 			if(register_y == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xA5:
 			operand1 = Read(program_counter + 1);
@@ -1217,7 +1176,6 @@ void CPU::Step() {
 			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xA6:
 			operand1 = Read(program_counter + 1);
@@ -1225,27 +1183,23 @@ void CPU::Step() {
 			if(register_x == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xA7: IllegalOpcode(0xA7); break;
 		case 0xA8:
 			register_y = register_a;
 			if(register_y == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xA9:
 			register_a = Read(program_counter + 1);
 			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xAA:
 			register_x = register_a;
 			if(register_x == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xAB: IllegalOpcode(0xAB); break;
 		case 0xAC:
@@ -1255,7 +1209,6 @@ void CPU::Step() {
 			if(register_y == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xAD:
 			operand1 = Read(program_counter + 1);
@@ -1264,7 +1217,6 @@ void CPU::Step() {
 			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xAE:
 			operand1 = Read(program_counter + 1);
@@ -1273,18 +1225,16 @@ void CPU::Step() {
 			if(register_x == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xAF: IllegalOpcode(0xAF); break;
 		case 0xB0:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0xB1:
 			/* Read location from Zero-Page to load from. */
@@ -1298,7 +1248,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xB2: IllegalOpcode(0xB2); break;
 		case 0xB3: IllegalOpcode(0xB3); break;
@@ -1309,7 +1259,6 @@ void CPU::Step() {
 			if(register_y == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0xB5:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -1318,7 +1267,6 @@ void CPU::Step() {
 			if(register_a == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0xB6:
 			/* Zero Page Y Index added here to force wrap around instead of carry in the line after. */
@@ -1327,12 +1275,10 @@ void CPU::Step() {
 			if(register_x == 0x00)      { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)      { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0xB7: IllegalOpcode(0xB7); break;
 		case 0xB8:
 			BitClear(register_p, STATUS_BIT_OVERFLOW);
-			cycles += 2;
 			break;
 		case 0xB9:
 			operand1 = Read(program_counter + 1);
@@ -1341,13 +1287,12 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xBA:
 			register_x = register_s;
 			if(register_x == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xBB: IllegalOpcode(0xBB); break;
 		case 0xBC:
@@ -1357,7 +1302,7 @@ void CPU::Step() {
 			if(register_y == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xBD:
 			operand1 = Read(program_counter + 1);
@@ -1366,7 +1311,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xBE:
 			operand1 = Read(program_counter + 1);
@@ -1375,7 +1320,7 @@ void CPU::Step() {
 			if(register_x == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xBF: IllegalOpcode(0xBF); break;
 		case 0xC0:
@@ -1385,12 +1330,10 @@ void CPU::Step() {
 			if(register_y == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xC1:
 			std::cout << "CMP INDX unimp" << '\n';
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0xC2: IllegalOpcode(0xC2); break;
 		case 0xC3: IllegalOpcode(0xC3); break;
@@ -1402,7 +1345,6 @@ void CPU::Step() {
 			if(register_y == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xC5:
 			operand1 = Read(program_counter + 1);
@@ -1412,7 +1354,6 @@ void CPU::Step() {
 			if(register_a == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xC6:
 			operand1 = Read(program_counter + 1);
@@ -1422,14 +1363,12 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0xC7: IllegalOpcode(0xC7); break;
 		case 0xC8:
 			register_y++;
 			if(register_y == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_y >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xC9:
 			operand1 = Read(program_counter + 1);
@@ -1438,13 +1377,11 @@ void CPU::Step() {
 			if(register_a == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xCA:
 			register_x--;
 			if(register_x == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xCB: IllegalOpcode(0xCB); break;
 		case 0xCC:
@@ -1456,7 +1393,6 @@ void CPU::Step() {
 			result = (register_y - result);
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xCD:
 			operand1 = Read(program_counter + 1);
@@ -1467,7 +1403,6 @@ void CPU::Step() {
 			result = (register_a - Read((operand2 << 8) + operand1));
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xCE:
 			operand1 = Read(program_counter + 1);
@@ -1478,23 +1413,21 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0xCF: IllegalOpcode(0xCF); break;
 		case 0xD0:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(BitCheck(register_p, STATUS_BIT_ZERO) == 0) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0xD1:
 			std::cout << "CMP INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 5; // +1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xD2: IllegalOpcode(0xD2); break;
 		case 0xD3: IllegalOpcode(0xD3); break;
@@ -1508,7 +1441,6 @@ void CPU::Step() {
 			if(register_a == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0xD6:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -1519,12 +1451,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0xD7: IllegalOpcode(0xD7); break;
 		case 0xD8:
 			BitClear(register_p, STATUS_BIT_DECIMAL);
-			cycles += 2;
 			break;
 		case 0xD9:
 			operand1 = Read(program_counter + 1);
@@ -1535,7 +1465,7 @@ void CPU::Step() {
 			result = (register_a - Read((operand2 << 8) + operand1 + register_y));
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xDA: IllegalOpcode(0xDA); break;
 		case 0xDB: IllegalOpcode(0xDB); break;
@@ -1549,7 +1479,7 @@ void CPU::Step() {
 			result = (register_a - Read((operand2 << 8) + operand1 + register_x));
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xDE:
 			operand1 = Read(program_counter + 1);
@@ -1560,7 +1490,6 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 7;
 			break;
 		case 0xDF: IllegalOpcode(0xDF); break;
 		case 0xE0:
@@ -1570,12 +1499,10 @@ void CPU::Step() {
 			if(register_x == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xE1:
 			std::cout << "SBC INDX unimp" << '\n';
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0xE2: IllegalOpcode(0xE2); break;
 		case 0xE3: IllegalOpcode(0xE3); break;
@@ -1587,7 +1514,6 @@ void CPU::Step() {
 			if(register_x == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xE5:
 			operand1 = Read(program_counter + 1);
@@ -1596,7 +1522,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 3;
 			break;
 		case 0xE6:
 			operand1 = Read(program_counter + 1);
@@ -1606,14 +1531,12 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 5;
 			break;
 		case 0xE7: IllegalOpcode(0xE7); break;
 		case 0xE8:
 			register_x++;
 			if(register_x == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_x >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
-			cycles += 2;
 			break;
 		case 0xE9:
 			operand1 = Read(program_counter + 1);
@@ -1627,10 +1550,9 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 2;
 			break;
 		case 0xEA:
-			cycles += 2;
+			/* NOP */
 			break;
 		case 0xEB: IllegalOpcode(0xEB); break;
 		case 0xEC:
@@ -1642,7 +1564,6 @@ void CPU::Step() {
 			result = (register_x - result);
 			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xED:
 			operand1 = Read(program_counter + 1);
@@ -1652,7 +1573,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4;
 			break;
 		case 0xEE:
 			operand1 = Read(program_counter + 1);
@@ -1663,23 +1583,21 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 6;
 			break;
 		case 0xEF: IllegalOpcode(0xEF); break;
 		case 0xF0:
 			operand1 = Read(program_counter + 1);
 			program_counter++;
 			if(BitCheck(register_p, STATUS_BIT_ZERO) == 1) {
-				// TODO: Add extra cycle if crossing page boundary (0x100).
 				program_counter += (int8_t)operand1;
 				cycles += 1;
+				// TODO: Add 1 to cycle count if crossing page boundary.
 			}
-			cycles += 2;
 			break;
 		case 0xF1:
 			std::cout << "SBC INDY unimp" << '\n';
 			program_counter += 1;
-			cycles += 5; // +1 page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xF2: IllegalOpcode(0xF2); break;
 		case 0xF3: IllegalOpcode(0xF3); break;
@@ -1692,7 +1610,6 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 4;
 			break;
 		case 0xF6:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
@@ -1703,12 +1620,10 @@ void CPU::Step() {
 			if(operand2 == 0x00)       { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(operand2 >= 0x80)       { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 1;
-			cycles += 6;
 			break;
 		case 0xF7: IllegalOpcode(0xF7); break;
 		case 0xF8:
 			BitSet(register_p, STATUS_BIT_DECIMAL);
-			cycles += 2;
 			break;
 		case 0xF9:
 			operand1 = Read(program_counter + 1);
@@ -1718,7 +1633,7 @@ void CPU::Step() {
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xFA: IllegalOpcode(0xFA); break;
 		case 0xFB: IllegalOpcode(0xFB); break;
@@ -1726,12 +1641,17 @@ void CPU::Step() {
 		case 0xFD:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			result = Read((operand2 << 8) + operand1 + register_x);
-			register_a -= (result + !BitCheck(register_p, STATUS_BIT_CARRY)); // TODO: Overflow flag needs to be set.
+			result = (register_a - Read((operand2 << 8) + operand1 + register_x) - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			if((result & 0x100) == 0)  { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			/* Check signed overflow. */
+			if((register_a ^ result) & (~Read((operand2 << 8) + operand1 + register_x) ^ result) & 0x80)
+									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			register_a = (uint8_t) result;
 			if(register_a == 0x00)     { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(register_a >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 4; // + 1 for page
+			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
 		case 0xFE:
 			operand1 = Read(program_counter + 1);
@@ -1742,7 +1662,6 @@ void CPU::Step() {
 			if(result == 0x00)         { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(result >= 0x80)         { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
 			program_counter += 2;
-			cycles += 7;
 			break;
 		case 0xFF: IllegalOpcode(0xFF); break;
 		default:
@@ -1750,6 +1669,10 @@ void CPU::Step() {
 			while (1);
 			break;
 	}
+
+	// TODO: Add structure with instruction size to CPU class, then add to pc here. Remove "increment_pc" variable below.
+	//program_counter += instruction_sizes[instruction];
+	cycles += cycle_sizes[instruction];
 
 	if(increment_pc) {
 		program_counter++;

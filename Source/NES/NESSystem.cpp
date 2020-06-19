@@ -116,32 +116,34 @@ void NESSystem::DumpTestInfo() {
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_ZERO))              { std::cout << " ZERO"; }      else { std::cout << "     "; }
 	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_CARRY))             { std::cout << " CARRY"; }     else { std::cout << "      "; }
 	std::cout << '\n';
+	
+	/* Check to see which test ROM type is running. */
+	if((GetCPU()->ReadDebug(0x6001) == 0xDE) && (GetCPU()->ReadDebug(0x6002) == 0xB0) && (GetCPU()->ReadDebug(0x6003) == 0x61)) {
 
-	if((GetCPU()->ReadDebug(0x6001) != 0xDE) || (GetCPU()->ReadDebug(0x6002) != 0xB0) || (GetCPU()->ReadDebug(0x6003) != 0x61)) {
-		std::cout << "Test ROM not detected.\n";
-		return;
-	}
+		if(GetCPU()->ReadDebug(0x6000) == 0x81) {
+			std::cout << "Test ROM needs reset. Resetting...\n";
+			// TODO: Remove this SDL_Delay when test suite script is made.
+			SDL_Delay(1000);
+			Reset(false);
+			return;
+		} else if(GetCPU()->ReadDebug(0x6000) == 0x80) {
+			std::cout << "Test ROM still testing." << '\n';
+			std::cout << "[Test ROM (0x6004)]: ";
+			//return;
+		} else {
+			std::cout << "Test ROM is finished.\n";
+			std::cout << "[Test ROM (0x6004)]: ";
+		}
 
-	if(GetCPU()->ReadDebug(0x6000) == 0x81) {
-		std::cout << "Test ROM needs reset. Resetting...\n";
-		// TODO: Remove this SDL_Delay when test suite script is made.
-		SDL_Delay(1000);
-		Reset(false);
-		return;
-	} else if(GetCPU()->ReadDebug(0x6000) == 0x80) {
-		std::cout << "Test ROM still testing." << '\n';
-		std::cout << "[Test ROM (0x6004)]: ";
-		//return;
+		for(size_t i = 0; i < 64; i++) {
+			printf("%c", GetCPU()->ReadDebug(0x6004 + i));
+		}
+
+		std::cout << '\n';
+
 	} else {
-		std::cout << "Test ROM is finished.\n";
-		std::cout << "[Test ROM (0x6004)]: ";
+		std::cout << "Test ROM results: " << HEX2X(GetCPU()->ReadDebug(0x0002)) << HEX2X(GetCPU()->ReadDebug(0x0003)) << '\n';
 	}
-
-	for(size_t i = 0; i < 64; i++) {
-		printf("%c", GetCPU()->ReadDebug(0x6004 + i));
-	}
-
-	std::cout << '\n';
 
 	return;
 }

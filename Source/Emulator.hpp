@@ -21,6 +21,8 @@
 #ifndef __EMULATOR_HPP__
 #define __EMULATOR_HPP__
 
+#include <string>
+
 #include <SDL.h>
 
 #include "NES/ControllerIO.hpp"
@@ -54,6 +56,9 @@ class Emulator {
 		SDL_Event         sdl_event;
 
 		NESSystem* nes_system;
+
+		/* File name of the ROM being run. */
+		std::string file_name;
 
 		bool display_framerate;
 		bool emulation_paused;
