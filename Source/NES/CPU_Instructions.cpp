@@ -84,7 +84,7 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(operand1);
 			/* Check if bit 7 is set to preserve value. */
-			if(operand2 &  0x80)       { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (operand2 & 0x80));
 			operand2 <<= 1;
 			Write(operand1, operand2);
 			UpdateZeroNegative(operand2);
@@ -95,7 +95,8 @@ void CPU::Step() {
 			/* ASL */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(operand1);
-			if(operand2 &  0x80)       { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			/* Check if bit 7 is set to preserve value. */
+			SetFlag(STATUS_BIT_CARRY, (operand2 & 0x80));
 			operand2 <<= 1;
 			Write(operand1, operand2);
 			UpdateZeroNegative(operand2);
@@ -103,7 +104,7 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand1 = Read(operand1);
 			register_a |= operand1;
-			
+			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
 		case 0x08:
@@ -117,7 +118,7 @@ void CPU::Step() {
 			break;
 		case 0x0A:
 			/* Check if bit 7 is set to preserve value. */
-			if(register_a &  0x80)     { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
 			register_a <<= 1;
 			UpdateZeroNegative(register_a);
 			break;
@@ -135,7 +136,7 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1);
 			/* Check if bit 7 is set to preserve value. */
-			if(result &  0x80)     { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (result & 0x80));
 			result <<= 1;
 			Write((operand2 << 8) + operand1, result);
 			UpdateZeroNegative(result);
@@ -171,11 +172,7 @@ void CPU::Step() {
 			operand1 = (Read(program_counter + 1) + register_x);
 			operand2 = Read(operand1);
 			/* Check if bit 7 is set to preserve value. */
-			if(operand2 & 0x80) {
-				BitSet(register_p, STATUS_BIT_CARRY);
-			} else {
-				BitClear(register_p, STATUS_BIT_CARRY);
-			}
+			SetFlag(STATUS_BIT_CARRY, (operand2 & 0x80));
 			operand2 <<= 1;
 			Write(operand1, operand2);
 			UpdateZeroNegative(operand2);
@@ -209,11 +206,7 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1 + register_x);
 			/* Check if bit 7 is set to preserve value. */
-			if(result & 0x80) {
-				BitSet(register_p, STATUS_BIT_CARRY);
-			} else {
-				BitClear(register_p, STATUS_BIT_CARRY);
-			}
+			SetFlag(STATUS_BIT_CARRY, (result & 0x80));
 			result <<= 1;
 			Write((operand2 << 8) + operand1 + register_x, result);
 			UpdateZeroNegative(result);
@@ -242,9 +235,9 @@ void CPU::Step() {
 		case 0x24:
 			operand1 = Read(program_counter + 1);
 			operand1 = Read(operand1);
-			if((operand1 & register_a) == 0) { BitSet(register_p, STATUS_BIT_ZERO); } else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(BitCheck(operand1, 6))  { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
-			if(BitCheck(operand1, 7))  { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_ZERO, ((operand1 & register_a) == 0));
+			SetFlag(STATUS_BIT_OVERFLOW, BitCheck(operand1, 6));
+			SetFlag(STATUS_BIT_NEGATIVE, BitCheck(operand1, 7));
 			program_counter += 1;
 			break;
 		case 0x25:
@@ -261,25 +254,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x01 at end to preserve old carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(operand2 & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x80));
 				/* Perform shift, add old bit 1. */
 				operand2 = (operand2 << 1) + 0x01;
 			} else {
 				/* No, add nothing and let bit 0 go to 0 to preserve carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(operand2 & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x80));
 				/* Perform shift, add nothing. */
 				operand2 = (operand2 << 1);
 			}
@@ -303,25 +284,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x01 at end to preserve old carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(register_a & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
 				/* Perform shift, add old bit 1. */
 				register_a = (register_a << 1) + 0x01;
 			} else {
 				/* No, add nothing and let bit 0 go to 0 to preserve carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(register_a & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
 				/* Perform shift, add nothing. */
 				register_a = (register_a << 1);
 			}
@@ -332,9 +301,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			operand1 = Read((operand2 << 8) + operand1);
-			if((operand1 & register_a) == 0) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(BitCheck(operand1, 6))        { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
-			if(BitCheck(operand1, 7))        { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_ZERO, ((operand1 & register_a) == 0));
+			SetFlag(STATUS_BIT_OVERFLOW, BitCheck(operand1, 6));
+			SetFlag(STATUS_BIT_NEGATIVE, BitCheck(operand1, 7));
 			program_counter += 2;
 			break;
 		case 0x2D:
@@ -352,25 +321,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x01 at end to preserve old carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(result & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x80));
 				/* Perform shift, add old bit 1. */
 				result = (result << 1) + 0x01;
 			} else {
 				/* No, add nothing and let bit 0 go to 0 to preserve carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(result & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x80));
 				/* Perform shift, add nothing. */
 				result = (result << 1);
 			}
@@ -516,7 +473,7 @@ void CPU::Step() {
 			program_counter += 1;
 			break;
 		case 0x4A:
-			/* Check if bit 7 is set to preserve value. */
+			/* Check if bit 0 is set to preserve value. */
 			SetFlag(STATUS_BIT_CARRY, (register_a & 0x01));
 			register_a >>= 1;
 			UpdateZeroNegative(register_a);
@@ -539,12 +496,8 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1);
-			/* Check if bit 7 is set to preserve value. */
-			if(result & 0x1) {
-				BitSet(register_p, STATUS_BIT_CARRY);
-			} else {
-				BitClear(register_p, STATUS_BIT_CARRY);
-			}
+			/* Check if bit 0 is set to preserve value. */
+			SetFlag(STATUS_BIT_CARRY, (result & 0x01));
 			result >>= 1;
 			Write((operand2 << 8) + operand1, result);
 			UpdateZeroNegative(result);
@@ -581,7 +534,7 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1) + register_x;
 			operand2 = Read(operand1);
 			/* Check if bit 0 is set to preserve value. */
-			if(operand2 &  0x01)       { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (operand2 & 0x01));
 			operand2 >>= 1;
 			Write(operand1, operand2);
 			UpdateZeroNegative(operand2);
@@ -589,7 +542,7 @@ void CPU::Step() {
 			break;
 		case 0x57: IllegalOpcode(0x57); break;
 		case 0x58:
-			BitClear(register_p, STATUS_BIT_INTERRUPT_DISABLE);
+			SetFlag(STATUS_BIT_INTERRUPT_DISABLE, false);
 			break;
 		case 0x59:
 			operand1 = Read(program_counter + 1);
@@ -614,12 +567,8 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1 + register_x);
-			/* Check if bit 7 is set to preserve value. */
-			if(result & 0x1) {
-				BitSet(register_p, STATUS_BIT_CARRY);
-			} else {
-				BitClear(register_p, STATUS_BIT_CARRY);
-			}
+			/* Check if bit 0 is set to preserve value. */
+			SetFlag(STATUS_BIT_CARRY, (result & 0x1));
 			result >>= 1;
 			Write(((operand2 << 8) + operand1 + register_x), result);
 			UpdateZeroNegative(result);
@@ -667,25 +616,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x80 at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(operand2 & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x01));
 				/* Perform shift, add old bit 7. */
 				operand2 = (operand2 >> 1) + 0x80;
 			} else {
 				/* No, add nothing and let bit 7 go to 0. */
 				/* Check if bit 0 is set to preserve value. */
-				if(operand2 & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x01));
 				/* Perform shift, add nothing. */
 				operand2 = (operand2 >> 1);
 			}
@@ -703,10 +640,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			result = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
 			/* Check signed overflow. */
-			if((register_a ^ result) & (operand1 ^ result) & 0x80)
-									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (operand1 ^ result) & 0x80));
 			register_a = (uint8_t) result; 
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
@@ -716,25 +652,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x01 at end to preserve old carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(register_a & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
 				/* Perform shift, add old bit 1. */
 				register_a = (register_a << 1) + 0x01;
 			} else {
 				/* No, add nothing and let bit 0 go to 0 to preserve carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				if(register_a & 0x80) {
-					/* Yes, set carry flag to preserve bit 7. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 7. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
 				/* Perform shift, add nothing. */
 				register_a = (register_a << 1);
 			}
@@ -761,10 +685,9 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			result = register_a + Read((operand2 << 8) + operand1) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
 			/* Check signed overflow. */
-			if((register_a ^ result) & (Read((operand2 << 8) + operand1) ^ result) & 0x80)
-									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (Read((operand2 << 8) + operand1) ^ result) & 0x80));
 			register_a = (uint8_t) result; 
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
@@ -777,25 +700,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x80 at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(result & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x01));
 				/* Perform shift, add bit from carry flag. */
 				result = (result >> 1) + 0x80;
 			} else {
 				/* No, add nothing at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(result & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x01));
 				/* Perform shift, add nothing. */
 				result = (result >> 1);
 			}
@@ -827,10 +738,9 @@ void CPU::Step() {
 			operand1 = Read(operand1);
 			result = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
 			/* Check signed overflow. */
-			if((register_a ^ result) & (operand1 ^ result) & 0x80)
-									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (operand1 ^ result) & 0x80));
 			register_a = (uint8_t) result; 
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
@@ -843,25 +753,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x80 at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(operand2 & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x01));
 				/* Perform shift, add bit from carry flag. */
 				operand2 = (operand2 >> 1) + 0x80;
 			} else {
 				/* No, add nothing at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(operand2 & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (operand2 & 0x01));
 				/* Perform shift, add nothing. */
 				operand2 = (operand2 >> 1);
 			}
@@ -871,17 +769,16 @@ void CPU::Step() {
 			break;
 		case 0x77: IllegalOpcode(0x77); break;
 		case 0x78:
-			BitSet(register_p, STATUS_BIT_INTERRUPT_DISABLE);
+			SetFlag(STATUS_BIT_INTERRUPT_DISABLE, true);
 			break;
 		case 0x79:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = register_a + Read((operand2 << 8) + operand1 + register_y) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, ((result & 0x100) == 0));
 			/* Check signed overflow. */
-			if((register_a ^ result) & (Read((operand2 << 8) + operand1 + register_y) ^ result) & 0x80)
-									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (~Read((operand2 << 8) + operand1 + register_x) ^ result) & 0x80));
 			register_a = (uint8_t) result; 
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
@@ -895,10 +792,9 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			result = register_a + Read((operand2 << 8) + operand1 + register_x) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			if(result &  0x100)        { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
+			SetFlag(STATUS_BIT_CARRY, ((result & 0x100) == 0));
 			/* Check signed overflow. */
-			if((register_a ^ result) & (Read((operand2 << 8) + operand1 + register_x) ^ result) & 0x80)
-									   { BitSet(register_p, STATUS_BIT_OVERFLOW); } else { BitClear(register_p, STATUS_BIT_OVERFLOW); }
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (~Read((operand2 << 8) + operand1 + register_x) ^ result) & 0x80));
 			register_a = (uint8_t) result; 
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
@@ -912,25 +808,13 @@ void CPU::Step() {
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
 				/* Yes, add 0x80 at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(result & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x01));
 				/* Perform shift, add bit from carry flag. */
 				result = (result >> 1) + 0x80;
 			} else {
 				/* No, add nothing at end to preserve old carry flag. */
 				/* Check if bit 0 is set to preserve value. */
-				if(result & 0x01) {
-					/* Yes, set carry flag to preserve bit 0. */
-					BitSet(register_p, STATUS_BIT_CARRY);
-				} else {
-					/* No, clear carry flag to preserve bit 0. */
-					BitClear(register_p, STATUS_BIT_CARRY);
-				}
+				SetFlag(STATUS_BIT_CARRY, (result & 0x01));
 				/* Perform shift, add nothing. */
 				result = (result >> 1);
 			}
@@ -1179,7 +1063,7 @@ void CPU::Step() {
 			break;
 		case 0xB7: IllegalOpcode(0xB7); break;
 		case 0xB8:
-			BitClear(register_p, STATUS_BIT_OVERFLOW);
+			SetFlag(STATUS_BIT_OVERFLOW, false);
 			break;
 		case 0xB9:
 			operand1 = Read(program_counter + 1);
@@ -1222,9 +1106,9 @@ void CPU::Step() {
 		case 0xC0:
 			operand1 = Read(program_counter + 1);
 			result = (register_y - operand1);
-			if(register_y >= operand1) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_y == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_y >= operand1));
+			SetFlag(STATUS_BIT_ZERO,     (register_y == operand1));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xC1:
@@ -1237,18 +1121,18 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(operand1);
 			result = (register_y - operand2);
-			if(register_y >= operand2) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_y == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_y >= operand2));
+			SetFlag(STATUS_BIT_ZERO,     (register_y == operand2));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xC5:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(operand1);
 			result = (register_a - operand2);
-			if(register_a >= operand2) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= operand2));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == operand2));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xC6:
@@ -1267,9 +1151,9 @@ void CPU::Step() {
 		case 0xC9:
 			operand1 = Read(program_counter + 1);
 			result = (register_a - operand1);
-			if(register_a >= operand1) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= operand1));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == operand1));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xCA:
@@ -1281,20 +1165,20 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1);
-			if(register_y >= result)   { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_y == result)   { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			SetFlag(STATUS_BIT_CARRY,    (register_y >= result));
+			SetFlag(STATUS_BIT_ZERO,     (register_y == result));
 			result = (register_y - result);
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 2;
 			break;
 		case 0xCD:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1);
-			if(register_a >= result)   { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == result)   { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= result));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == result));
 			result = (register_a - Read((operand2 << 8) + operand1));
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 2;
 			break;
 		case 0xCE:
@@ -1329,9 +1213,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1) + register_x;
 			operand2 = Read(operand1);
 			result = (register_a - operand2);
-			if(register_a >= operand2) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == operand2) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= operand2));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == operand2));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xD6:
@@ -1351,10 +1235,10 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1 + register_y);
-			if(register_a >= result)   { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == result)   { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= result));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == result));
 			result = (register_a - Read((operand2 << 8) + operand1 + register_y));
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 2;
 			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
@@ -1365,10 +1249,10 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1 + register_x);
-			if(register_a >= result)   { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_a == result)   { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= result));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == result));
 			result = (register_a - Read((operand2 << 8) + operand1 + register_x));
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 2;
 			// TODO: Add 1 to cycle count if crossing page boundary.
 			break;
@@ -1385,9 +1269,9 @@ void CPU::Step() {
 		case 0xE0:
 			operand1 = Read(program_counter + 1);
 			result = (register_x - operand1);
-			if(register_x >= operand1) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_x == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_x >= operand1));
+			SetFlag(STATUS_BIT_ZERO,     (register_x == operand1));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xE1:
@@ -1400,9 +1284,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand1 = Read(operand1);
 			result = (register_x - operand1);
-			if(register_x >= operand1) { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_x == operand1) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_CARRY,    (register_x >= operand1));
+			SetFlag(STATUS_BIT_ZERO,     (register_x == operand1));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xE5:
@@ -1444,10 +1328,10 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result = Read((operand2 << 8) + operand1);
-			if(register_x >= result)   { BitSet(register_p, STATUS_BIT_CARRY); }    else { BitClear(register_p, STATUS_BIT_CARRY); }
-			if(register_x == result)   { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
+			SetFlag(STATUS_BIT_CARRY,    (register_x >= result));
+			SetFlag(STATUS_BIT_ZERO,     (register_x == result));
 			result = (register_x - result);
-			if(result     >= 0x80)     { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 2;
 			break;
 		case 0xED:

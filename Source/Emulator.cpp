@@ -133,6 +133,10 @@ void Emulator::Initialize() {
 	/* Hard NROM Games */
 	//file_name = "ROMs/Super Mario Bros..nes";
 
+	/* To test dummy APU IRQ reads. */
+	//ironsword.nes
+	//cobra triangles.nes
+
 	/* Create emulated system. */
 	nes_system = new NESSystem(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
 	nes_system->Initialize(file_name);
@@ -184,9 +188,9 @@ void Emulator::Loop() {
 			nes_system->Frame();
 		}
 
-		if(nes_system->GetCPU()->GetProgramCounter() == 0xE601) {
-			emulation_paused = true;
-		}
+		//if(nes_system->GetCPU()->GetProgramCounter() == 0xE601) {
+		//	emulation_paused = true;
+		//}
 
 		//SDL_RenderClear(sdl_renderer);
 
@@ -206,7 +210,7 @@ void Emulator::Loop() {
 		if(nes_system->GetCPU()->CycleCount() % 1000 == 0) {
 			//sprintf(title_buffer, "%f", (frame_time * 1000.0));
 			//sprintf(title_buffer, "%f", frame_rate);
-			sprintf(title_buffer, "%li", nes_system->GetCPU()->CycleCount());
+			sprintf(title_buffer, "%lli", nes_system->GetCPU()->CycleCount());
 			SDL_SetWindowTitle(sdl_window, title_buffer);
 		}
 

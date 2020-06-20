@@ -116,7 +116,7 @@ class CPU {
 		uint64_t CycleCount() { return cycles; };
 
 	private:
-		/* Updates CPU flags based on register value. */
+		/* Updates CPU flags based on input value. */
 		void UpdateZeroNegative(uint8_t value) {
 			if(value == 0x00) { BitSet(register_p, STATUS_BIT_ZERO); }     else { BitClear(register_p, STATUS_BIT_ZERO); }
 			if(value >= 0x80) { BitSet(register_p, STATUS_BIT_NEGATIVE); } else { BitClear(register_p, STATUS_BIT_NEGATIVE); }
@@ -130,7 +130,7 @@ class CPU {
 			}
 		}
 
-		/* Sets a specified bit in the flag register if the condition is true. */
+		/* Sets a specified bit in the flag register to the value of condition. */
 		void SetFlag(uint8_t flag_bit, bool condition) {
 			if(condition) {
 				BitSet(register_p, flag_bit);
@@ -202,7 +202,9 @@ class CPU {
 		uint8_t instruction_sizes[0x100] = {
 			1, 2, // TODO: Fill in the rest of this struct
 			// TODO: Fix HACK
-			// TODO: Finish adding UpdateZeroNegative
+			// TODO: Finish changing flag setting to SetFlag
+			// TODO: Modify PHP 0x08 to push correct value on bits 4 & 5
+			// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
 		};
 };
 
