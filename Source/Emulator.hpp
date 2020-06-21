@@ -23,6 +23,7 @@
 
 #include <fstream>
 #include <string>
+#include <utility>
 
 #include <SDL.h>
 
@@ -56,7 +57,8 @@ class Emulator {
 
 		SDL_Event         sdl_event;
 
-		NESSystem* nes_system;
+		/* The system being emulated. */
+		std::unique_ptr<NESSystem> nes_system;
 
 		/* Log file for the emulator. */
 		std::ofstream log_file;

@@ -29,17 +29,19 @@
 
 #include "PPU.hpp"
 
+// TODO: Reading commented out until CPU is working.
+
 uint8_t PPU::ReadPPU(uint16_t address) {
 
 	uint8_t value = nes_system->GetFloatingBus();
 
-         if(address >= 0x0000 && address <= 0x1FFF) { value = nes_system->GetCartridge()->GetMapper()->ReadPPU(address); } /* Normally mapped to CHR-ROM or CHR-RAM. Often bankswitched. */
-    else if(address >= 0x2000 && address <= 0x2FFF) { value = ppu_memory[address]; }                                       /* Normally mapped to 2kB PPU RAM, but can be partly or fulled remapped to cartridge. */
-    else if(address >= 0x3000 && address <= 0x3EFF) { value = ppu_memory[address]; }                                       /* "Usually" a mirror of 0x2000 to 0x2FFF. */
-    else if(address >= 0x3F00 && address <= 0x3FFF) { value = ppu_memory[address]; }                                       /* Always mapped to PPU internal pallete control. */
-	else {
+    //     if(address >= 0x0000 && address <= 0x1FFF) { value = nes_system->GetCartridge()->GetMapper()->ReadPPU(address); } /* Normally mapped to CHR-ROM or CHR-RAM. Often bankswitched. */
+    //else if(address >= 0x2000 && address <= 0x2FFF) { value = ppu_memory[address - 0x2000]; }                              /* Normally mapped to 2kB PPU RAM, but can be partly or fulled remapped to cartridge. */
+    //else if(address >= 0x3000 && address <= 0x3EFF) { value = ppu_memory[address - 0x2000]; }                              /* "Usually" a mirror of 0x2000 to 0x2FFF. */
+    //else if(address >= 0x3F00 && address <= 0x3FFF) { value = ppu_memory[address - 0x2000]; }                              /* Always mapped to PPU internal pallete control. */
+	//else {
 		value = nes_system->GetFloatingBus();
-	}
+	//}
 
 	nes_system->SetFloatingBus(value);
 	return value;
@@ -49,10 +51,10 @@ void PPU::WritePPU(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 
-         if(address >= 0x0000 && address <= 0x1FFF) { nes_system->GetCartridge()->GetMapper()->WritePPU(address, value); } /* Normally mapped to CHR-ROM or CHR-RAM. Often bankswitched. */
-    else if(address >= 0x2000 && address <= 0x2FFF) { ppu_memory[address] = value; }                                       /* Normally mapped to 2kB PPU RAM, but can be partly or fulled remapped to cartridge. */
-    else if(address >= 0x3000 && address <= 0x3EFF) { ppu_memory[address] = value; }                                       /* "Usually" a mirror of 0x2000 to 0x2FFF. */
-    else if(address >= 0x3F00 && address <= 0x3FFF) { ppu_memory[address] = value; }                                       /* Always mapped to PPU internal pallete control. */
+    //     if(address >= 0x0000 && address <= 0x1FFF) { nes_system->GetCartridge()->GetMapper()->WritePPU(address, value); } /* Normally mapped to CHR-ROM or CHR-RAM. Often bankswitched. */
+    //else if(address >= 0x2000 && address <= 0x2FFF) { ppu_memory[address - 0x2000] = value; }                              /* Normally mapped to 2kB PPU RAM, but can be partly or fulled remapped to cartridge. */
+    //else if(address >= 0x3000 && address <= 0x3EFF) { ppu_memory[address - 0x2000] = value; }                              /* "Usually" a mirror of 0x2000 to 0x2FFF. */
+    //else if(address >= 0x3F00 && address <= 0x3FFF) { ppu_memory[address - 0x2000] = value; }                              /* Always mapped to PPU internal pallete control. */
 
 	return;
 }
@@ -190,11 +192,17 @@ void PPU::WriteCPU(uint16_t address, uint8_t value) {
 	/* PPUDATA */
 	if(address == 0x2007) {
 	
-		ppu_memory[ppu_address] = value;
+		// TODO: Commented out until CPU is fully working.
+		//ppu_memory[ppu_address] = value;
 
 		/* Check if bit 2 is set to increment VRAM address. */
 		if(ppu_ctrl & 0x02) {
 			ppu_address++;
+
+			// HACK: This is a temporary hack to prevent access beyond what PPU memory should allow. NOT CORRECT AT ALL.
+			if(ppu_address == 0x1000) {
+				ppu_address = 0;
+			}
 		}
 	}
 

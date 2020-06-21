@@ -18,6 +18,8 @@
  * along with mattNES.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <utility>
+
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 
@@ -25,11 +27,7 @@
 
 int main(int argc, char** argv) {
 
-	Emulator* emulator = new Emulator();
+	std::unique_ptr<Emulator> emulator = std::make_unique<Emulator>();
 
-	int return_value = emulator->Main(argc, argv);
-
-	delete emulator;
-
-	return return_value;
+	return emulator->Main(argc, argv);
 }

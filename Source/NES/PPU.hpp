@@ -89,7 +89,8 @@ class PPU {
 		/* Read from PPU memory without causing any emulation side effects. */
 		uint8_t PeekMemory(uint16_t address) { return ppu_memory[address]; };
 
-		uint32_t* GetVideoBuffer() { return video_buffer; };
+		/* Get a pointer to PPU buffer, needed for SDL. */
+		uint32_t* GetVideoBuffer() { return ppu_buffer.data(); };
 
 		uint16_t GetCurrentCycle() { return current_cycle; };
 		uint16_t GetCurrentScanline() { return current_scanline; };
@@ -104,21 +105,19 @@ class PPU {
 		void ReadTile();
 
 		void DrawPixel();
-		void DrawPixel(uint16_t x, uint16_t y, uint32_t color);
-		void DrawPixel(uint16_t x, uint16_t y, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
+		void DrawPixel(int x, int y, uint32_t color);
+		void DrawPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
 
 	private:
 		NESSystem* nes_system;
 
-		/* Pointer to ppu_buffer that acts as the link between PPU and RF circuit on NES. */
-		uint32_t* video_buffer;
 		/* Internal PPU buffer that holds screen data. */
-		uint32_t ppu_buffer[NES_SCREEN_WIDTH * NES_SCREEN_HEIGHT];
+		std::vector<uint32_t> ppu_buffer;
 
 		/* The NES PPU can address up to 16kB (0x4000 bytes) of memory.
 		   However only 2kB is stored directly on the PPU, with the rest depending on cartridge mapping.
 		   It is emulated as full 16kB here for now.*/
-		uint8_t ppu_memory[0x1000];
+		std::vector<uint8_t> ppu_memory;
 
 		/* BACKGROUND RENDERING----------------------------------------------------------------- */
 
@@ -130,10 +129,10 @@ class PPU {
 
 		/* SPRITE RENDERING -------------------------------------------------------------------- */
 
-		/* The object attribute memory table or OAM is a collection of 64 entries 4 bytes wide of sprites that the PPU renders. */
-		uint8_t object_attribute_memory[256];
+		/* The object attribute memory table or OAM is a collection of 64 entries 4 bytes wide (256 bytes total) of sprites that the PPU renders. */
+		std::vector<uint8_t> object_attribute_memory;
 		/* This secondary OAM is used internally by the PPU to hold 8 sprites being rendered that scanline. */
-		uint8_t second_attribute_memory[32];
+		std::vector<uint8_t> second_attribute_memory;
 
 		uint8_t pattern_table_shift_register_oam_1[8];
 		uint8_t pattern_table_shift_register_oam_2[8];

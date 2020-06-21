@@ -22,6 +22,7 @@
 #define __NES_SYSTEM_HPP__
 
 #include <string>
+#include <utility>
 
 class ControllerIO;
 class Cartridge;
@@ -73,11 +74,11 @@ class NESSystem {
 		ppu_emulation_mode_t    GetPPUModel() { return ppu_emulation_mode;    };
 		region_emulation_mode_t GetRegion()   { return region_emulation_mode; };
 
-		ControllerIO* GetControllerIO() { return controller_io; }
-		Cartridge* GetCartridge() { return cartridge; }
-		APU* GetAPU() { return apu; }
-		CPU* GetCPU() { return cpu; }
-		PPU* GetPPU() { return ppu; }
+		ControllerIO* GetControllerIO() { return controller_io.get(); }
+		Cartridge* GetCartridge() { return cartridge.get(); }
+		APU* GetAPU() { return apu.get(); }
+		CPU* GetCPU() { return cpu.get(); }
+		PPU* GetPPU() { return ppu.get(); }
 
 		uint8_t GetFloatingBus() { return floating_bus_value; }
 		void SetFloatingBus(uint8_t value) { floating_bus_value = value; }
@@ -87,11 +88,12 @@ class NESSystem {
 		ppu_emulation_mode_t    ppu_emulation_mode;
 		region_emulation_mode_t region_emulation_mode;
 
-		ControllerIO* controller_io;
-		Cartridge* cartridge;
-		APU* apu;
-		CPU* cpu;
-		PPU* ppu;
+		std::unique_ptr<ControllerIO> controller_io;
+		std::unique_ptr<Cartridge> cartridge;
+		std::unique_ptr<APU> apu;
+		std::unique_ptr<CPU> cpu;
+		std::unique_ptr<PPU> ppu;
+		
 
 		/* Value on the data busses between CPU, APU, and PPU to emulate bus conflict and floating bus behaviour. */
 		uint8_t floating_bus_value;

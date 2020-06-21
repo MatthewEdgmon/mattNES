@@ -18,7 +18,9 @@
  * along with mattNES.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iterator>
 #include <iostream>
+#include <vector>
 
 #include "../BitOps.hpp"
 #include "../HexOutput.hpp"
@@ -37,22 +39,15 @@ PPU::~PPU() {
 
 void PPU::Initialize() {
 
-	/* Clear buffer, and set up pointer to it. */
-	for(size_t i = 0; i < (NES_SCREEN_WIDTH * NES_SCREEN_HEIGHT); i++) {
-		ppu_buffer[i] = 0;
-	}
+	/* Setup and clear PPU video buffer, and set up pointer to it. */
+	ppu_buffer.resize(NES_SCREEN_WIDTH * (NES_SCREEN_HEIGHT + 1) + 1, 0);
 
-	video_buffer = ppu_buffer;
+	/* Setup and clear VRAM */
+	ppu_memory.resize(0x1000, 0);
 
-	/* Clear VRAM */
-	for(size_t i = 0; i < 0x1000; i++) {
-		ppu_memory[i] = 0;
-	}
-
-	/* Clear OAM */
-	for(size_t i = 0; i < 256; i++) {
-		object_attribute_memory[i] = 0;
-	}
+	/* Setup and clear primary/secondary OAM */
+	object_attribute_memory.resize(256, 0);
+	second_attribute_memory.resize(256, 0);
 
 	ppu_ctrl = 0;
 	ppu_mask = 0;
@@ -80,8 +75,6 @@ void PPU::Shutdown() {
 
 	ppu_scroll_write_counter = 0;
 	ppu_address_write_counter = 0;
-
-	video_buffer = NULL;
 }
 
 void PPU::Reset(bool hard) {
@@ -140,17 +133,6 @@ void PPU::Step() {
 		emphasis  = BitCheck(ppu_mask, PPU_MASK_EMPHASIZE_RED);
 		emphasis += BitCheck(ppu_mask, PPU_MASK_EMPHASIZE_GREEN) << 1;
 		emphasis += BitCheck(ppu_mask, PPU_MASK_EMPHASIZE_BLUE) << 2;
-
-		uint32_t test_color;
-
-		/* Generate a new test color every frame just to test VBlank stuff. */
-		if(frame_count % 2 == 0) {
-			test_color = 0xFF00FFFF;
-		} else {
-			test_color = 0xFFFF00FF;
-		}
-
-		DrawPixel(current_cycle, current_scanline, test_color);
 
 		ProcessVisibleScanline();
 	}
@@ -217,10 +199,18 @@ void PPU::ProcessVisibleScanline() {
 		/* Idle Scanline. */
 	}
 
+	/* Visible portion of the screen. */
 	if(current_cycle >= 1   && current_cycle <= 256) {
-		DrawPixel();
+
+		/* Generate a new test color every frame just to test VBlank stuff. */
+		if(frame_count % 2 == 0) {
+			DrawPixel(current_cycle, current_scanline, 0xFF00FFFF);
+		} else {
+			DrawPixel(current_cycle, current_scanline, 0xFFFF00FF);
+		}
 	}
 
+	/* No longer visible. */
 	if(current_cycle >= 257 && current_cycle <= 320) {
 
 	}
@@ -247,14 +237,11 @@ void PPU::ProcessPostrenderScanline() {
 		if(BitCheck(ppu_ctrl, PPU_CTRL_NMI_ENABLE)) {
 			nes_system->GetCPU()->Interrupt(INTERRUPT_NMI);
 		}
-
 	}
 }
 
 void PPU::ReadTile() {
-
 	uint16_t tile_address = (0x2000 + (ppu_address & 0x0FFF));
-
 }
 
 void PPU::DrawPixel() {
@@ -266,10 +253,9 @@ void PPU::DrawPixel() {
 	//uint8_t pixel_color = pattern_table_shift_register_1;
 
 	ppu_buffer[buffer_position];
-
 }
 
-void PPU::DrawPixel(uint16_t x, uint16_t y, uint32_t color) {
+void PPU::DrawPixel(int x, int y, uint32_t color) {
 
 	// TODO: Turn these into assertations.
 	if(x > NES_SCREEN_WIDTH) {
@@ -285,7 +271,7 @@ void PPU::DrawPixel(uint16_t x, uint16_t y, uint32_t color) {
 	return;
 }
 
-void PPU::DrawPixel(uint16_t x, uint16_t y, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha) {
+void PPU::DrawPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha) {
 
 	// TODO: Turn these into assertations.
 	if(x > NES_SCREEN_WIDTH) {

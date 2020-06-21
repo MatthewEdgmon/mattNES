@@ -103,7 +103,7 @@ void Emulator::Initialize() {
 	/* Test ROMs */
 	//file_name = "Test/instr_test-v3/all_instrs.nes";
 	//file_name = "Test/instr_test-v3/official_only.nes";
-	//file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
+	file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/02-immediate.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/03-zero_page.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/04-zp_xy.nes";
@@ -119,7 +119,7 @@ void Emulator::Initialize() {
 	//file_name = "Test/instr_test-v3/rom_singles/14-brk.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/15-special.nes";
 
-	file_name = "Test/other/nestest.nes";
+	//file_name = "Test/other/nestest.nes";
 
 	//file_name = "Test/instr_misc/instr_misc.nes");
 
@@ -141,7 +141,7 @@ void Emulator::Initialize() {
 	//cobra triangles.nes
 
 	/* Create emulated system. */
-	nes_system = new NESSystem(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
+	nes_system = std::make_unique<NESSystem>(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
 	nes_system->Initialize(file_name);
 
 	/* Set program counter to automated mode for nestest.nes */
@@ -222,13 +222,13 @@ void Emulator::Loop() {
 		//	emulation_paused = true;
 		//}
 
-		//SDL_RenderClear(sdl_renderer);
+		SDL_RenderClear(sdl_renderer);
 
-		//SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (NES_SCREEN_WIDTH * 4));
+		SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (NES_SCREEN_WIDTH * 4));
 
-		//SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+		SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
 
-		//SDL_RenderPresent(sdl_renderer);
+		SDL_RenderPresent(sdl_renderer);
 
 		frame_end = SDL_GetPerformanceCounter();
 		
@@ -255,8 +255,6 @@ void Emulator::Loop() {
 void Emulator::Shutdown() {
 	/* Shutdown emulated system. */
 	nes_system->Shutdown();
-	delete nes_system;
-	nes_system = nullptr;
 
 	/* Close log file. */
 	log_file.close();

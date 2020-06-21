@@ -45,7 +45,7 @@ CPU::~CPU() {
 void CPU::Initialize() {
 
 	/* Clear RAM */
-	for (size_t i = 0; i < 0x800; i++) {
+	for(size_t i = 0; i < 0x800; i++) {
 		// TODO: Figure out if we need to emulate random values being stored in CPU memory at bootup.
 		cpu_memory[i] = 0x00;
 	}
@@ -119,14 +119,14 @@ void CPU::Write(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 
-	if(address >= 0x0000 && address <= 0x1FFF) { cpu_memory[(address & 0x7FF)] = value; return; }                             /* Zero Page, mirrored every 0x800 bytes. */
-	if(address >= 0x2000 && address <= 0x3FFF) { nes_system->GetPPU()->WriteCPU((address & 0x2007), value); return; }         /* PPU Register MMIO, mirrored every 8 bytes. */
-	if(address >= 0x4000 && address <= 0x4013) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	if(address == 0x4014)                      { PerformOAMDMA(value); }                                                      /* OAMDMA. */
-	if(address == 0x4015)                      { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	if(address == 0x4016)                      { nes_system->GetControllerIO()->WriteIO(address, value); return; }            /* I/O. */
-	if(address >= 0x4017 && address <= 0x401F) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	if(address >= 0x4020 && address <= 0xFFFF) { nes_system->GetCartridge()->GetMapper()->WriteCPU(address, value); return; } /* Cartridge Memory Space */
+		 if(address >= 0x0000 && address <= 0x1FFF) { cpu_memory[(address & 0x7FF)] = value; return; }                             /* Zero Page, mirrored every 0x800 bytes. */
+	else if(address >= 0x2000 && address <= 0x3FFF) { nes_system->GetPPU()->WriteCPU((address & 0x2007), value); return; }         /* PPU Register MMIO, mirrored every 8 bytes. */
+	else if(address >= 0x4000 && address <= 0x4013) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
+	else if(address == 0x4014)                      { PerformOAMDMA(value); }                                                      /* OAMDMA. */
+	else if(address == 0x4015)                      { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
+	else if(address == 0x4016)                      { nes_system->GetControllerIO()->WriteIO(address, value); return; }            /* I/O. */
+	else if(address >= 0x4017 && address <= 0x401F) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
+	else if(address >= 0x4020 && address <= 0xFFFF) { nes_system->GetCartridge()->GetMapper()->WriteCPU(address, value); return; } /* Cartridge Memory Space */
 
 	return;
 }

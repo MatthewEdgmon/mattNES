@@ -1117,7 +1117,13 @@ void CPU::Step() {
 			program_counter += 1;
 			break;
 		case 0xC1:
-			std::cout << "CMP INDX unimp" << '\n';
+			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
+			operand1 = Read(program_counter + 1) + register_x;
+			operand2 = Read(program_counter + 1) + register_x + 1;
+			result = (register_a - Read(Read(operand2) << 8) + Read(operand1));
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= Read(Read(operand2) << 8) + Read(operand1)));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == Read(Read(operand2) << 8) + Read(operand1)));
+			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			program_counter += 1;
 			break;
 		case 0xC2: IllegalOpcode(0xC2); break;
@@ -1280,8 +1286,17 @@ void CPU::Step() {
 			program_counter += 1;
 			break;
 		case 0xE1:
-			std::cout << "SBC INDX unimp" << '\n';
-			program_counter += 2;
+			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
+			operand1 = Read(program_counter + 1) + register_x;
+			operand2 = Read(program_counter + 1) + register_x + 1;
+			result16 = (register_a - (Read((operand2 << 8) + operand1)) - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			/* Check signed overflow. */
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~(Read((operand2 << 8) + operand1)) ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
+			UpdateZeroNegative(register_a);
+			program_counter += 1;
 			break;
 		case 0xE2: IllegalOpcode(0xE2); break;
 		case 0xE3: IllegalOpcode(0xE3); break;
@@ -1297,7 +1312,12 @@ void CPU::Step() {
 		case 0xE5:
 			operand1 = Read(program_counter + 1);
 			operand1 = Read(operand1);
-			register_a -= (operand1 + !BitCheck(register_p, STATUS_BIT_CARRY)); // TODO: Overflow flag needs to be set.
+			result16 = (register_a - operand1 - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			/* Check signed overflow. */
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~operand1 ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
@@ -1342,8 +1362,12 @@ void CPU::Step() {
 		case 0xED:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			result = Read((operand2 << 8) + operand1);
-			register_a -= (result + !BitCheck(register_p, STATUS_BIT_CARRY)); // TODO: Overflow flag needs to be set.
+			result16 = (register_a - (Read((operand2 << 8) + operand1)) - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			/* Check signed overflow. */
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~(Read((operand2 << 8) + operand1)) ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
 			break;
@@ -1378,7 +1402,12 @@ void CPU::Step() {
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
 			operand1 = Read(program_counter + 1) + register_x;
 			operand1 = Read(operand1);
-			register_a -= (operand1 + !BitCheck(register_p, STATUS_BIT_CARRY)); // TODO: Overflow flag needs to be set.
+			result16 = (register_a - operand1 - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			/* Check signed overflow. */
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~operand1 ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
@@ -1398,8 +1427,12 @@ void CPU::Step() {
 		case 0xF9:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			result = Read((operand2 << 8) + operand1 + register_y);
-			register_a -= (result + !BitCheck(register_p, STATUS_BIT_CARRY)); // TODO: Overflow flag needs to be set.
+			result = (register_a - Read((operand2 << 8) + operand1 + register_y) - !BitCheck(register_p, STATUS_BIT_CARRY));
+			/* Check carry/unsigned overflow. */
+			SetFlag(STATUS_BIT_CARRY, ((result & 0x100) == 0));
+			/* Check signed overflow. */
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (~Read((operand2 << 8) + operand1 + register_y) ^ result) & 0x80));
+			register_a = (uint8_t) result;
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
 			// TODO: Add 1 to cycle count if crossing page boundary.

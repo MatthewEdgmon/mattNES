@@ -57,8 +57,8 @@ void Cartridge::Initialize() {
 }
 
 void Cartridge::Shutdown() {
-	delete header;
 	delete header_unif;
+	delete header;
 }
 
 void Cartridge::OpenFile(std::string file_name) {

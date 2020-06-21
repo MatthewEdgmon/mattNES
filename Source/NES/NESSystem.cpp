@@ -44,35 +44,29 @@ NESSystem::~NESSystem() {
 void NESSystem::Initialize(std::string rom_file_name) {
 	floating_bus_value = 0;
 
-	controller_io = new ControllerIO(this);
+	controller_io = std::make_unique<ControllerIO>(this);
 	controller_io->Initialize();
 
-	cartridge = new Cartridge(this);
+	cartridge = std::make_unique<Cartridge>(this);
 	cartridge->Initialize();
 	cartridge->OpenFile(rom_file_name);
 
-	apu = new APU(this);
+	apu = std::make_unique<APU>(this);
 	apu->Initialize();
 
-	ppu = new PPU(this);
+	ppu = std::make_unique<PPU>(this);
 	ppu->Initialize();
 
-	cpu = new CPU(this);
+	cpu = std::make_unique<CPU>(this);
 	cpu->Initialize();
 
 	Reset(true);
 }
 
 void NESSystem::Shutdown() {
-	apu->Shutdown();
-	ppu->Shutdown();
 	cpu->Shutdown();
-
-	delete cpu;
-	delete ppu;
-	delete apu;
-	delete cartridge;
-	delete controller_io;
+	ppu->Shutdown();
+	apu->Shutdown();
 }
 
 void NESSystem::Reset(bool hard) {
