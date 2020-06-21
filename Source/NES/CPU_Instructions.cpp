@@ -52,6 +52,7 @@ void CPU::Step() {
 
 	uint16_t old_pc = 0;
 	uint8_t result = 0;
+	uint16_t result16 = 0;
 
 	switch(instruction) {
 		case 0x00:
@@ -103,7 +104,7 @@ void CPU::Step() {
 			break;
 		case 0x08:
 			/* When pushing the flag register, bits 4 and 5 are set in the value pushed. */
-			result = register_p |= 0x30;
+			result = register_p | 0x30;
 			Push(result);
 			break;
 		case 0x09:
@@ -210,19 +211,19 @@ void CPU::Step() {
 			break;
 		case 0x1F: IllegalOpcode(0x1F); break;
 		case 0x20:
-			/* Set the return address three bytes ahead of current PC. TODO: Implement accurate FDE to make PC only plus two. */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			program_counter += 3; 
-			Push(program_counter >> 8);
-			Push(program_counter);
+			Push((program_counter + 2) >> 8);
+			Push((program_counter + 2));
 			program_counter = (operand2 << 8) + operand1;
 			increment_pc = false;
 			break;
 		case 0x21:
-			operand1 = Read(program_counter + 1);
-			operand1 = Read(operand1 + register_x); // TODO: Not done right.
-			register_a &= operand1;
+			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
+			operand1 = Read(program_counter + 1) + register_x;
+			operand2 = Read(program_counter + 1) + register_x + 1;
+			/* TODO: Pass through masks for zero page wrap around. */
+			register_a &= Read(Read(operand2) << 8) + Read(operand1);
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
@@ -267,7 +268,10 @@ void CPU::Step() {
 			break;
 		case 0x27: IllegalOpcode(0x27); break;
 		case 0x28:
-			register_p = Pop();
+			/* When pulling the flag register, bits 4 and 5 are set in the value pulled. */
+			result = Pop();
+			result ^= 0x30;
+			register_p = result;
 			break;
 		case 0x29:
 			operand1 = Read(program_counter + 1);
@@ -425,10 +429,10 @@ void CPU::Step() {
 			break;
 		case 0x3F: IllegalOpcode(0x3F); break;
 		case 0x40:
-			/* Pop flags, high byte, and low byte in that order. */
+			/* Pop flags, low byte, and high byte in that order. */
 			register_p = Pop();
-			program_counter  = Pop() << 8;
-			program_counter += Pop();
+			program_counter  = Pop();
+			program_counter += Pop() << 8;
 			increment_pc = false;
 			break;
 		case 0x41:
@@ -572,10 +576,8 @@ void CPU::Step() {
 			break;
 		case 0x5F: IllegalOpcode(0x5F); break;
 		case 0x60:
-			old_pc = program_counter;
 			program_counter =  Pop();
 			program_counter |= Pop() << 8;
-			increment_pc = false;
 			break;
 		case 0x61:
 			/* Zero Page X Index added here to force wrap around here instead of carry in the line after. */
@@ -634,29 +636,29 @@ void CPU::Step() {
 			break;
 		case 0x69:
 			operand1 = Read(program_counter + 1);
-			result = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
+			result16 = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
+			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (operand1 ^ result) & 0x80));
-			register_a = (uint8_t) result; 
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (operand1 ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
 		case 0x6A:
 			/* Check if carry flag is set to preserve value. */
 			if(BitCheck(register_p, STATUS_BIT_CARRY)) {
-				/* Yes, add 0x01 at end to preserve old carry flag. */
+				/* Yes, add 0x80 at end to preserve old carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x01));
 				/* Perform shift, add old bit 1. */
-				register_a = (register_a << 1) + 0x01;
+				register_a = (register_a >> 1) + 0x80;
 			} else {
 				/* No, add nothing and let bit 0 go to 0 to preserve carry flag. */
 				/* Check if bit 7 is set to preserve value. */
-				SetFlag(STATUS_BIT_CARRY, (register_a & 0x80));
+				SetFlag(STATUS_BIT_CARRY, (register_a & 0x01));
 				/* Perform shift, add nothing. */
-				register_a = (register_a << 1);
+				register_a = (register_a >> 1);
 			}
 			UpdateZeroNegative(register_a);
 			break;
@@ -946,7 +948,10 @@ void CPU::Step() {
 		case 0xA1:
 			/* Zero Page X Index added here to force wrap around instead of carry in the line after. */
 			operand1 = Read(program_counter + 1) + register_x;
-			register_a = operand1;
+			operand2 = Read(program_counter + 1) + register_x + 1;
+			/* Pass through masks for zero page wrap around. */
+			//(Read(operand2) << 8) + Read(operand1);
+			register_a = Read(Read(operand2) << 8) + Read(operand1);
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
@@ -956,7 +961,11 @@ void CPU::Step() {
 			UpdateZeroNegative(register_x);
 			program_counter += 1;
 			break;
-		case 0xA3: IllegalOpcode(0xA3); break;
+		case 0xA3:
+			illegal_opcode_triggered = true;
+			operand1 = Read(program_counter + 1);
+			program_counter += 1;
+			break;
 		case 0xA4:
 			operand1 = Read(program_counter + 1);
 			register_y = Read(operand1);
@@ -1307,12 +1316,12 @@ void CPU::Step() {
 			break;
 		case 0xE9:
 			operand1 = Read(program_counter + 1);
-			result = (register_a - operand1 - !BitCheck(register_p, STATUS_BIT_CARRY));
+			result16 = (register_a - operand1 - !BitCheck(register_p, STATUS_BIT_CARRY));
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, ((result & 0x100) == 0));
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (~operand1 ^ result) & 0x80));
-			register_a = (uint8_t) result;
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~operand1 ^ result16) & 0x80));
+			register_a = (uint8_t)result16;
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;

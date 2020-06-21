@@ -153,31 +153,24 @@ uint8_t CPU::PeekMemory(uint16_t address) {
 
 void CPU::Push(uint8_t value) {
 
-	if(register_s == 0x00) {
-		std::cout << std::endl << std::endl << "STACK OVERFLOW" << std::endl << std::endl;
-		nes_system->DumpTestInfo();
-		while (1);
-	}
+	//if(register_s == 0x00) {
+	//	std::cout << std::endl << std::endl << "STACK OVERFLOW" << std::endl << std::endl;
+	//	nes_system->DumpTestInfo();
+	//	while (1);
+	//}
 
-	cpu_memory[(0x0100 + register_s)] = value;
-	register_s--;
+	Write((0x100 + register_s--), value);
 }
 
 uint8_t CPU::Pop() {
 	
-	if(register_s == 0xFF) {
-		std::cout << std::endl << std::endl << "STACK UNDERFLOW" << std::endl << std::endl;
-		nes_system->DumpTestInfo();
-		while (1);
-	}
+	//if(register_s == 0xFF) {
+	//	std::cout << std::endl << std::endl << "STACK UNDERFLOW" << std::endl << std::endl;
+	//	nes_system->DumpTestInfo();
+	//	while (1);
+	//}
 
-	register_s++;
-	uint8_t return_value = cpu_memory[(0x100 + register_s)];
-
-	/* Clear the value on the stack location left behind. */
-	cpu_memory[(0x0100 + register_s)] = 0;
-
-	return return_value;
+	return Read(0x100 + ++register_s);
 }
 
 void CPU::Interrupt(interrupt_type_t interrupt_type) {

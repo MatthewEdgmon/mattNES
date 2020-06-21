@@ -92,28 +92,39 @@ std::string CPU::StepDisassembler() {
 	switch(instruction_mode[dis_instruction]) {
 		case IMP:
 			break;
+		case ACU:
+			buffer << " A";
+			break;
 		case IMM:
 			buffer << " #$" << HEX2X(dis_operand1);
 			break;
 		case ZPG:
 			buffer << " $" << HEX2X(dis_operand1) << " = ";
 			switch(instruction_opcode[dis_instruction]) {
+				case STA: buffer << HEX2X(register_a); break;
 				case STX: buffer << HEX2X(register_x); break;
+				case STY: buffer << HEX2X(register_y); break;
 				default:
 					break;
 			}
 			break;
 		case ZPX:
-			// STA $00,X @ 55 = 00
 			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(register_x) << " = " << HEX2X((uint8_t)dis_operand1 + register_x);
 			break;
 		case ZPY:
+			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(register_y) << " = " << HEX2X((uint8_t)dis_operand1 + register_y);
 			break;
 		case REL:
-			buffer << " $" << HEX4X(program_counter + (int8_t)dis_operand1);
+			// Always off by two for some reason??
+			buffer << " $" << HEX4X(program_counter + (int8_t)dis_operand1 + 2);
 			break;
 		case ABS:
 			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1);
+			switch(instruction_opcode[dis_instruction]) {
+			case LDA: buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
+				default:
+					break;
+			}
 			break;
 		case ABX:
 			break;
@@ -122,6 +133,11 @@ std::string CPU::StepDisassembler() {
 		case IND:
 			break;
 		case IIN:
+			//LDA ($80,X) @ 82 = 0300 = 5B
+			buffer << " ($" << HEX2X(dis_operand1) << ",X) @ " << HEX2X((uint8_t)dis_operand1 + register_x) << " = ";
+			dis_operand1 = Read(program_counter + 1) + register_x;
+			dis_operand2 = Read(program_counter + 1) + register_x + 1;
+			buffer << HEX4X((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)) << " = " << HEX2X(PeekMemory((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)));
 			break;
 		case INI:
 			break;
