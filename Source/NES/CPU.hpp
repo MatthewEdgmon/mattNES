@@ -38,8 +38,15 @@
 
 class NESSystem;
 
+typedef enum interrupt_type {
+	INTERRUPT_NMI,
+	INTERRUPT_IRQ,
+	INTERRUPT_BRK
+} interrupt_type_t;
+
 typedef enum addressing_mode {
 	IMP,
+	ACU,
 	IMM,
 	ZPG,
 	ZPX,
@@ -53,17 +60,16 @@ typedef enum addressing_mode {
 	INI
 } addressing_mode_t;
 
-typedef enum interrupt_type {
-	INTERRUPT_NMI,
-	INTERRUPT_IRQ,
-	INTERRUPT_BRK
-} interrupt_type_t;
-
 typedef enum opcode {
+	/* Offical */
 	ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
 	CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
 	JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
-	RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA
+	RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
+
+	/* Illegal, using naming convention from NESdev wiki. */
+	AHX, ALR, ANC, ARR, AXS, DCP, ISC, LAS, LAX, RLA, RRA, SAX, SLO, SRE,
+	TAS, SHX, SHY, STP, XAA
 } opcode_t;
 
 class CPU {
@@ -83,7 +89,7 @@ class CPU {
 
 		/* Functions located in CPU_Disassemble.cpp ------------------------------------------------------ */
 
-		void StepDisassembler(); /* Ouput debugging information for the current step. */
+		std::string StepDisassembler(); /* Output disassembly information to a string. */
 
 		/* ----------------------------------------------------------------------------------------------- */
 
@@ -110,8 +116,6 @@ class CPU {
 		void SetProgramCounter(uint16_t value) { program_counter = value; };
 
 		bool IsInTestMode() { return test_mode; };
-
-		void ToggleDisassembly() { show_disassembly = !show_disassembly; };
 
 		uint64_t CycleCount() { return cycles; };
 
@@ -156,12 +160,15 @@ class CPU {
 		uint8_t register_y;
 		uint8_t register_s;
 
-		/* instruction being executed at current step. */
+		/* Instruction being executed at current step. */
 		uint8_t instruction;
 
 		/* Argument storage for instructions. */
 		uint8_t operand1;
 		uint8_t operand2;
+
+		/* Instruction storage for disassembly. */
+		uint8_t dis_instruction;
 
 		/* Argument storage for disassembly. */
 		uint8_t dis_operand1;
@@ -174,11 +181,70 @@ class CPU {
 
 		bool test_mode;
 
-		bool show_disassembly;
-
 		uint64_t cycles;
 
+		/* Associates instruction byte with instruction names. */
+		std::string instruction_names[0x100] = {
+			"BRK", "ORA", "STP", "SLO", "NOP", "ORA", "ASL", "SLO", "PHP", "ORA", "ASL", "ANC", "NOP", "ORA", "ASL", "SLO",
+			"BPL", "ORA", "STP", "SLO", "NOP", "ORA", "ASL", "SLO", "CLC", "ORA", "NOP", "SLO", "NOP", "ORA", "ASL", "SLO",
+			"JSR", "AND", "STP", "RLA", "BIT", "AND", "ROL", "RLA", "PLP", "AND", "ROL", "ANC", "BIT", "AND", "ROL", "RLA",
+			"BMI", "AND", "STP", "RLA", "NOP", "AND", "ROL", "RLA", "SEC", "AND", "NOP", "RLA", "NOP", "AND", "ROL", "RLA",
+			"RTI", "EOR", "STP", "SRE", "NOP", "EOR", "LSR", "SRE", "PHA", "EOR", "LSR", "ALR", "JMP", "EOR", "LSR", "SRE",
+			"BVC", "EOR", "STP", "SRE", "NOP", "EOR", "LSR", "SRE", "CLI", "EOR", "NOP", "SRE", "NOP", "EOR", "LSR", "SRE",
+			"RTS", "ADC", "STP", "RRA", "NOP", "ADC", "ROR", "RRA", "PLA", "ADC", "ROR", "ARR", "JMP", "ADC", "ROR", "RRA",
+			"BVS", "ADC", "STP", "RRA", "NOP", "ADC", "ROR", "RRA", "SEI", "ADC", "NOP", "RRA", "NOP", "ADC", "ROR", "RRA",
+			"NOP", "STA", "NOP", "SAX", "STY", "STA", "STX", "SAX", "DEY", "NOP", "TXA", "XAA", "STY", "STA", "STX", "SAX",
+			"BCC", "STA", "STP", "AHX", "STY", "STA", "STX", "SAX", "TYA", "STA", "TXS", "TAS", "SHY", "STA", "SHX", "AHX",
+			"LDY", "LDA", "LDX", "LAX", "LDY", "LDA", "LDX", "LAX", "TAY", "LDA", "TAX", "LAX", "LDY", "LDA", "LDX", "LAX",
+			"BCS", "LDA", "STP", "LAX", "LDY", "LDA", "LDX", "LAX", "CLV", "LDA", "TSX", "LAS", "LDY", "LDA", "LDX", "LAX",
+			"CPY", "CMP", "NOP", "DCP", "CPY", "CMP", "DEC", "DCP", "INY", "CMP", "DEX", "AXS", "CPY", "CMP", "DEC", "DCP",
+			"BNE", "CMP", "STP", "DCP", "NOP", "CMP", "DEC", "DCP", "CLD", "CMP", "NOP", "DCP", "NOP", "CMP", "DEC", "DCP",
+			"CPX", "SBC", "NOP", "ISC", "CPX", "SBC", "INC", "ISC", "INX", "SBC", "NOP", "SBC", "CPX", "SBC", "INC", "ISC",
+			"BEQ", "SBC", "STP", "ISC", "NOP", "SBC", "INC", "ISC", "SED", "SBC", "NOP", "ISC", "NOP", "SBC", "INC", "ISC"
+		};
+
+		/* Associates instruction byte with instruction opcode. */
+		opcode_t instruction_opcode[0x100]{
+			BRK, ORA, STP, SLO, NOP, ORA, ASL, SLO, PHP, ORA, ASL, ANC, NOP, ORA, ASL, SLO,
+			BPL, ORA, STP, SLO, NOP, ORA, ASL, SLO, CLC, ORA, NOP, SLO, NOP, ORA, ASL, SLO,
+			JSR, AND, STP, RLA, BIT, AND, ROL, RLA, PLP, AND, ROL, ANC, BIT, AND, ROL, RLA,
+			BMI, AND, STP, RLA, NOP, AND, ROL, RLA, SEC, AND, NOP, RLA, NOP, AND, ROL, RLA,
+			RTI, EOR, STP, SRE, NOP, EOR, LSR, SRE, PHA, EOR, LSR, ALR, JMP, EOR, LSR, SRE,
+			BVC, EOR, STP, SRE, NOP, EOR, LSR, SRE, CLI, EOR, NOP, SRE, NOP, EOR, LSR, SRE,
+			RTS, ADC, STP, RRA, NOP, ADC, ROR, RRA, PLA, ADC, ROR, ARR, JMP, ADC, ROR, RRA,
+			BVS, ADC, STP, RRA, NOP, ADC, ROR, RRA, SEI, ADC, NOP, RRA, NOP, ADC, ROR, RRA,
+			NOP, STA, NOP, SAX, STY, STA, STX, SAX, DEY, NOP, TXA, XAA, STY, STA, STX, SAX,
+			BCC, STA, STP, AHX, STY, STA, STX, SAX, TYA, STA, TXS, TAS, SHY, STA, SHX, AHX,
+			LDY, LDA, LDX, LAX, LDY, LDA, LDX, LAX, TAY, LDA, TAX, LAX, LDY, LDA, LDX, LAX,
+			BCS, LDA, STP, LAX, LDY, LDA, LDX, LAX, CLV, LDA, TSX, LAS, LDY, LDA, LDX, LAX,
+			CPY, CMP, NOP, DCP, CPY, CMP, DEC, DCP, INY, CMP, DEX, AXS, CPY, CMP, DEC, DCP,
+			BNE, CMP, STP, DCP, NOP, CMP, DEC, DCP, CLD, CMP, NOP, DCP, NOP, CMP, DEC, DCP,
+			CPX, SBC, NOP, ISC, CPX, SBC, INC, ISC, INX, SBC, NOP, SBC, CPX, SBC, INC, ISC,
+			BEQ, SBC, STP, ISC, NOP, SBC, INC, ISC, SED, SBC, NOP, ISC, NOP, SBC, INC, ISC
+		};
+
+		/* Defines addressing mode for each opcode. */
+		addressing_mode_t instruction_mode[0x100] = {
+			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
+			ABS, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
+			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
+			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
+			IMM, IIN, IMM, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPY, ZPY, IMP, ABY, IMP, ABY, ABX, ABX, ABY, ABY,
+			IMM, IIN, IMM, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPY, ZPY, IMP, ABY, IMP, ABY, ABX, ABX, ABY, ABY,
+			IMM, IIN, IMM, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
+			IMM, IIN, IMM, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX
+		};
+
 		/* How many clock cycles each instruction takes. */
+		// TODO: Cycles of 0 means illegal opcode, find out actual cycles.
 		uint8_t cycle_sizes[0x100] = {
 			7, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 0, 4, 6, 0,
             2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0,
@@ -200,12 +266,27 @@ class CPU {
 
 		/* Size of each instruction in bytes. */
 		uint8_t instruction_sizes[0x100] = {
-			1, 2, // TODO: Fill in the rest of this struct
-			// TODO: Fix HACK
-			// TODO: Finish changing flag setting to SetFlag
-			// TODO: Modify PHP 0x08 to push correct value on bits 4 & 5
-			// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
+			1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			3, 2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			1, 2, 1, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3,
+			2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
+			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3
 		};
+
+		// TODO: Fix HACK
+		// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
+		// TODO:
 };
 
 #endif /* __CPU_HPP__ */

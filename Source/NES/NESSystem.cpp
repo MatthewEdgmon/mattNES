@@ -86,11 +86,11 @@ void NESSystem::Frame() {
 
 	if(region_emulation_mode == NTSC) {
 		/* For NTSC, there is exactly three PPU steps per CPU step. */
+		cpu->Step();
 		ppu->Step();
 		ppu->Step();
 		ppu->Step();
 		apu->Step();
-		cpu->Step();
 	} else if(region_emulation_mode == PAL) {
 		/* TODO: Handle PAL emulation, which is 3.2 PPU steps per CPU step. */
 	}
@@ -127,16 +127,18 @@ void NESSystem::DumpTestInfo() {
 			Reset(false);
 			return;
 		} else if(GetCPU()->PeekMemory(0x6000) == 0x80) {
-			std::cout << "Test ROM still testing." << '\n';
-			std::cout << "[Test ROM (0x6004)]: ";
-			//return;
+			std::cout << "Test ROM still testing. Output: ";
 		} else {
-			std::cout << "Test ROM is finished.\n";
-			std::cout << "[Test ROM (0x6004)]: ";
+			std::cout << "Test ROM is finished. Result code is " << HEX2X(GetCPU()->PeekMemory(0x6000)) << ". Output: ";
 		}
 
-		for(size_t i = 0; i < 64; i++) {
-			printf("%c", GetCPU()->PeekMemory(0x6004 + i));
+		uint8_t current_character = 0xFF;
+		uint16_t current_address = 0x6004;
+
+		while(current_character != 0) {
+			current_character = GetCPU()->PeekMemory(current_address);
+			std::cout << current_character;
+			current_address++;
 		}
 
 		std::cout << '\n';

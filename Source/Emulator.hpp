@@ -21,6 +21,7 @@
 #ifndef __EMULATOR_HPP__
 #define __EMULATOR_HPP__
 
+#include <fstream>
 #include <string>
 
 #include <SDL.h>
@@ -57,11 +58,17 @@ class Emulator {
 
 		NESSystem* nes_system;
 
+		/* Log file for the emulator. */
+		std::ofstream log_file;
+
 		/* File name of the ROM being run. */
 		std::string file_name;
 
 		bool display_framerate;
 		bool emulation_paused;
+		bool single_step;
+		bool dissamble_cpu;
+		bool log_to_file;
 		bool is_running;
 
 		/* Stored arguments. */

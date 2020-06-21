@@ -55,7 +55,6 @@ void CPU::Initialize() {
 	halt_on_illegal_opcode = false;
 	increment_pc = false;
 	test_mode = false;
-	show_disassembly = true;
 
 	operand1 = 0;
 	operand2 = 0;
@@ -80,7 +79,7 @@ void CPU::Reset(bool hard) {
 	increment_pc = true;
 
 	/* Status register starts with IRQ interrupts disabled (NMI still fires). */
-	register_p = 0x04;
+	register_p = 0x24;
 	register_a = 0;
 	register_x = 0;
 	register_y = 0;
@@ -91,7 +90,8 @@ void CPU::Reset(bool hard) {
 	std::cout << "  IRQ: " << HEX4(vector_irq) << std::endl;
 	std::cout << "  RST: " << HEX4(vector_rst) << std::endl;
 
-	cycles = 0;
+	/* Cycles always start at 7 on reset due to dummy reads/stack pushes. */
+	cycles = 7;
 }
 
 // TODO: Implementing cycle accuracy should probably start here. Count cycles for reading etc...

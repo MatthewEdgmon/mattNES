@@ -95,12 +95,15 @@ void Emulator::Initialize() {
 
 	sdl_audio_device_id = SDL_OpenAudioDevice(0, 0, &want, &have, 0);
 
-	// SDL Initializtion Finished Here.
+	/* Open log file. */
+	log_file.open("LogFile.txt", std::ios::out | std::ios::trunc);
 
+	// SDL Initializtion Finished Here.
+	
 	/* Test ROMs */
 	//file_name = "Test/instr_test-v3/all_instrs.nes";
 	//file_name = "Test/instr_test-v3/official_only.nes";
-	file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
+	//file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/02-immediate.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/03-zero_page.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/04-zp_xy.nes";
@@ -116,7 +119,7 @@ void Emulator::Initialize() {
 	//file_name = "Test/instr_test-v3/rom_singles/14-brk.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/15-special.nes";
 
-	//file_name = "Test/other/nestest.nes";
+	file_name = "Test/other/nestest.nes";
 
 	//file_name = "Test/instr_misc/instr_misc.nes");
 
@@ -151,7 +154,10 @@ void Emulator::Loop() {
 
 	is_running = true;
 	emulation_paused = true;
+	single_step = false;
 	display_framerate = false;
+	dissamble_cpu = true;
+	log_to_file = true;
 
 	char title_buffer[255];
 
@@ -185,7 +191,31 @@ void Emulator::Loop() {
 		}
 
 		if(emulation_paused == false) {
+
+			if(dissamble_cpu) {
+				std::cout << nes_system->GetCPU()->StepDisassembler();
+
+				if(log_to_file) {
+					log_file << nes_system->GetCPU()->StepDisassembler();
+				}
+			}
+
 			nes_system->Frame();
+		}
+
+		if(single_step) {
+		
+			if(dissamble_cpu) {
+				std::cout << nes_system->GetCPU()->StepDisassembler();
+
+				if(log_to_file) {
+					log_file << nes_system->GetCPU()->StepDisassembler();
+				}
+			}
+
+			nes_system->Frame();
+
+			single_step = false;
 		}
 
 		//if(nes_system->GetCPU()->GetProgramCounter() == 0xE601) {
@@ -228,6 +258,9 @@ void Emulator::Shutdown() {
 	delete nes_system;
 	nes_system = nullptr;
 
+	/* Close log file. */
+	log_file.close();
+
 	SDL_DestroyRenderer(sdl_renderer);
 
 	SDL_DestroyWindow(sdl_window);
@@ -254,10 +287,10 @@ void Emulator::HandleInputDown() {
 
 	switch(sdl_event.key.keysym.sym) {
 		case SDLK_RETURN:
-			nes_system->Frame();
+			single_step = true;
 			break;
 		case SDLK_d:
-			nes_system->GetCPU()->ToggleDisassembly();
+			dissamble_cpu = !dissamble_cpu;
 			break;
 		case SDLK_e:
 			emulation_paused = !emulation_paused;

@@ -91,6 +91,9 @@ class PPU {
 
 		uint32_t* GetVideoBuffer() { return video_buffer; };
 
+		uint16_t GetCurrentCycle() { return current_cycle; };
+		uint16_t GetCurrentScanline() { return current_scanline; };
+
 		uint64_t CycleCount() { return cycle_count; };
 
 	private:

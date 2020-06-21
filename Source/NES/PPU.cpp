@@ -86,7 +86,7 @@ void PPU::Shutdown() {
 
 void PPU::Reset(bool hard) {
 	current_cycle = 0;
-	current_scanline = 0;
+	current_scanline = 241;
 }
 
 void PPU::Step() {

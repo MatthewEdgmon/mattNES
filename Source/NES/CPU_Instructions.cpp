@@ -53,12 +53,6 @@ void CPU::Step() {
 	uint16_t old_pc = 0;
 	uint8_t result = 0;
 
-	if(show_disassembly) {
-		operand1 = PeekMemory(program_counter + 1);
-		operand2 = PeekMemory(program_counter + 2);
-		StepDisassembler();
-	}
-
 	switch(instruction) {
 		case 0x00:
 			Interrupt(INTERRUPT_BRK);
@@ -108,7 +102,9 @@ void CPU::Step() {
 			program_counter += 1;
 			break;
 		case 0x08:
-			Push(register_p);
+			/* When pushing the flag register, bits 4 and 5 are set in the value pushed. */
+			result = register_p |= 0x30;
+			Push(result);
 			break;
 		case 0x09:
 			operand1 = Read(program_counter + 1);
