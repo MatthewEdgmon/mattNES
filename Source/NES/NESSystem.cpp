@@ -138,7 +138,7 @@ void NESSystem::DumpTestInfo() {
 		std::cout << '\n';
 
 	} else {
-		std::cout << "Test ROM results: " << HEX2X(GetCPU()->PeekMemory(0x0002)) << HEX2X(GetCPU()->PeekMemory(0x0003)) << '\n';
+		std::cout << "Test ROM results: " << HEX2X(GetCPU()->PeekMemory(0x0002)) << "h, " << HEX2X(GetCPU()->PeekMemory(0x0003)) << "h\n";
 	}
 
 	return;

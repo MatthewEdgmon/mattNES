@@ -74,16 +74,44 @@ std::string CPU::StepDisassembler() {
 	
 	switch(instruction_sizes[dis_instruction]) {
 		case 1:
-			buffer << HEX2X(dis_instruction) << "        ";
+			buffer << HEX2X(dis_instruction) << "       ";
 			break;
 		case 2:
-			buffer << HEX2X(dis_instruction) << " " << HEX2X(dis_operand1) << "     ";
+			buffer << HEX2X(dis_instruction) << " " << HEX2X(dis_operand1) << "    ";
 			break;
 		case 3:
-			buffer << HEX2X(dis_instruction) << " " << HEX2X(dis_operand1) << " " << HEX2X(dis_operand2) << "  ";
+			buffer << HEX2X(dis_instruction) << " " << HEX2X(dis_operand1) << " " << HEX2X(dis_operand2) << " ";
 			break;
 		default:
-			buffer << HEX2X(dis_instruction) << "        ";
+			buffer << HEX2X(dis_instruction) << "       ";
+			break;
+	}
+
+	/* Output * before instruction name if illegal opcode. */
+	switch(instruction_opcode[dis_instruction]) {
+		case AHX:
+		case ALR:
+		case ANC:
+		case ARR:
+		case AXS:
+		case DCP:
+		case ISC:
+		case LAS:
+		case LAX:
+		case RLA:
+		case RRA:
+		case SAX:
+		case SLO:
+		case SRE:
+		case TAS:
+		case SHX:
+		case SHY:
+		case STP:
+		case XAA:
+			buffer << "*";
+			break;
+		default:
+			buffer << " ";
 			break;
 	}
 
@@ -99,14 +127,7 @@ std::string CPU::StepDisassembler() {
 			buffer << " #$" << HEX2X(dis_operand1);
 			break;
 		case ZPG:
-			buffer << " $" << HEX2X(dis_operand1) << " = ";
-			switch(instruction_opcode[dis_instruction]) {
-				case STA: buffer << HEX2X(register_a); break;
-				case STX: buffer << HEX2X(register_x); break;
-				case STY: buffer << HEX2X(register_y); break;
-				default:
-					break;
-			}
+			buffer << " $" << HEX2X(dis_operand1) << " = " << HEX2X(PeekMemory(dis_operand1));
 			break;
 		case ZPX:
 			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(register_x) << " = " << HEX2X((uint8_t)dis_operand1 + register_x);
@@ -119,12 +140,7 @@ std::string CPU::StepDisassembler() {
 			buffer << " $" << HEX4X(program_counter + (int8_t)dis_operand1 + 2);
 			break;
 		case ABS:
-			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1);
-			switch(instruction_opcode[dis_instruction]) {
-			case LDA: buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
-				default:
-					break;
-			}
+			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << " = " << HEX2X((uint8_t)PeekMemory((dis_operand2 << 8) + dis_operand1));
 			break;
 		case ABX:
 			break;
@@ -133,13 +149,17 @@ std::string CPU::StepDisassembler() {
 		case IND:
 			break;
 		case IIN:
-			//LDA ($80,X) @ 82 = 0300 = 5B
 			buffer << " ($" << HEX2X(dis_operand1) << ",X) @ " << HEX2X((uint8_t)dis_operand1 + register_x) << " = ";
 			dis_operand1 = Read(program_counter + 1) + register_x;
 			dis_operand2 = Read(program_counter + 1) + register_x + 1;
-			buffer << HEX4X((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)) << " = " << HEX2X(PeekMemory((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)));
+			buffer << HEX4X((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)) << " = " << HEX2X((uint8_t)PeekMemory((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)));
 			break;
 		case INI:
+			buffer << " ($" << HEX2X(dis_operand1) << "),Y = ";
+			dis_operand1 = PeekMemory(program_counter + 1);
+			dis_operand2 = PeekMemory(dis_operand1 + 1);
+			dis_operand1 = PeekMemory(dis_operand1);
+			buffer << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " = " << HEX2X((uint8_t)PeekMemory(dis_operand2 << 8) + dis_operand1 + register_y);
 			break;
 		default:
 			buffer << " Unknown addressing mode?";
@@ -147,7 +167,7 @@ std::string CPU::StepDisassembler() {
 	}
 
 	/* Pad output to column 49. */
-	buffer << std::setfill(' ') << std::setw(48 - buffer.tellp());
+	buffer << std::setfill(' ') << std::setw(50 - buffer.tellp());
 	
 	/* Ouput CPU registers. */
 	buffer << " A:" << HEX2X(register_a);
