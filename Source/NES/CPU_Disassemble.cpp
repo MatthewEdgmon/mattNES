@@ -140,7 +140,17 @@ std::string CPU::StepDisassembler() {
 			buffer << " $" << HEX4X(program_counter + (int8_t)dis_operand1 + 2);
 			break;
 		case ABS:
-			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << " = " << HEX2X((uint8_t)PeekMemory((dis_operand2 << 8) + dis_operand1));
+			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1);
+			switch(instruction_opcode[dis_instruction]) {
+				case LDA:
+				case LDX:
+				case LDY:
+				case STA:
+					buffer << " = " << HEX2X((uint8_t)PeekMemory((dis_operand2 << 8) + dis_operand1));
+					break;
+				default:
+					break;
+			}
 			break;
 		case ABX:
 			break;
@@ -177,17 +187,15 @@ std::string CPU::StepDisassembler() {
 	buffer << " SP:" << HEX2X(register_s);
 	
 	/* Output PPU status. */
-	if(nes_system->GetPPU()->GetCurrentCycle() < 10) {
-		buffer << " CYC:  " << nes_system->GetPPU()->GetCurrentCycle();
-	} else if (nes_system->GetPPU()->GetCurrentCycle() < 100) {
-		buffer << " CYC: " << nes_system->GetPPU()->GetCurrentCycle();
-	} else {
-		buffer << " CYC:" << nes_system->GetPPU()->GetCurrentCycle();
-	}
+	//if(nes_system->GetPPU()->GetCurrentCycle() < 10) {
+	//	buffer << " CYC:  " << nes_system->GetPPU()->GetCurrentCycle();
+	//} else if (nes_system->GetPPU()->GetCurrentCycle() < 100) {
+	//	buffer << " CYC: " << nes_system->GetPPU()->GetCurrentCycle();
+	//} else {
+	//	buffer << " CYC:" << nes_system->GetPPU()->GetCurrentCycle();
+	//}
 
-	// Probably a better way to pad that, but whatever.
-
-	buffer << " SL:" << nes_system->GetPPU()->GetCurrentScanline();
+	//buffer << " SL:" << nes_system->GetPPU()->GetCurrentScanline();
 
 	buffer << '\n';
 

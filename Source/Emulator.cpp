@@ -102,7 +102,7 @@ void Emulator::Initialize() {
 	
 	/* Test ROMs */
 	//file_name = "Test/instr_test-v3/all_instrs.nes";
-	//file_name = "Test/instr_test-v3/official_only.nes";
+	//file_name = "Test/instr_test-v5/official_only.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/02-immediate.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/03-zero_page.nes";
@@ -139,6 +139,10 @@ void Emulator::Initialize() {
 	/* To test dummy APU IRQ reads. */
 	//ironsword.nes
 	//cobra triangles.nes
+
+	// TODO: Fix HACK
+	// TODO: Figure out why the nintendulator log has P equal $24 after PHA pushing $04 to the stack and then PLP
+	// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
 
 	/* Create emulated system. */
 	nes_system = std::make_unique<NESSystem>(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);
@@ -218,9 +222,10 @@ void Emulator::Loop() {
 			single_step = false;
 		}
 
-		//if(nes_system->GetCPU()->GetProgramCounter() == 0xE601) {
-		//	emulation_paused = true;
-		//}
+		/* Pause at end of automated test for nestest.nes */
+		if(file_name == "Test/other/nestest.nes" && nes_system->GetCPU()->GetProgramCounter() == 0xC66E) {
+			emulation_paused = true;
+		}
 
 		//SDL_RenderClear(sdl_renderer);
 

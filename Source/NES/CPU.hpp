@@ -254,7 +254,7 @@ class CPU {
             6, 6, 0, 8, 0, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6,
             2, 5, 0, 0, 0, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
             6, 6, 0, 8, 0, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6,
-            2, 5, 0, 8, 0, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
+            2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
             2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4,
             2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 0, 5, 0, 0,
             2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4,
@@ -284,10 +284,6 @@ class CPU {
 			2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 3, 3, 3, 3,
 			2, 2, 1, 2, 2, 2, 2, 2, 1, 3, 1, 3, 3, 3, 3, 3
 		};
-
-		// TODO: Fix HACK
-		// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
-		// TODO:
 };
 
 #endif /* __CPU_HPP__ */
