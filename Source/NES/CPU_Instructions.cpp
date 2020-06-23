@@ -424,9 +424,10 @@ void CPU::Step() {
 		case 0x28:
 			/* When pulling the flag register, bits 4 and 5 are set in the value pulled. */
 			result = Pop();
-			// TODO: nestest is weird about this.
+			// TODO: On real hardware, bits 4 and 5 are ignored in the value popped.
 			//result &= 0xCF;
-			result &= 0xEF;
+			BitClear(result, 4);
+			BitSet(result, 5);
 			register_p = result;
 			break;
 		case 0x29:
@@ -682,7 +683,10 @@ void CPU::Step() {
 		case 0x40:
 			/* Pop flags, low byte, and high byte in that order. */
 			result = Pop();
-			result ^= 0x30;
+			// TODO: On real hardware, bits 4 and 5 are ignored in the value popped.
+			//result ^= 0x30;
+			BitClear(result, 4);
+			BitSet(result, 5);
 			register_p = result;
 			program_counter  = Pop();
 			program_counter += Pop() << 8;
@@ -1024,14 +1028,15 @@ void CPU::Step() {
 			program_counter += 1;
 			break;
 		case 0x65:
+			/* d */
 			operand1 = Read(program_counter + 1);
-			operand1 = Read(operand1);
-			result = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
+			operand2 = Read(operand1);
+			result16 = register_a + operand2 + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
+			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (operand1 ^ result) & 0x80));
-			register_a = (uint8_t) result; 
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (operand1 ^ result16) & 0x80));
+			register_a = (uint8_t)result16; 
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
 			break;
@@ -1668,8 +1673,18 @@ void CPU::Step() {
 			break;
 		case 0xAB:
 			illegal_opcode_triggered = true;
+			/* IMM */
+			operand1 = Read(program_counter + 1);
+			/* LDA */
+			register_a = operand1;
+			UpdateZeroNegative(register_a);
+			/* TAX */
+			register_x = register_a;
+			UpdateZeroNegative(register_x);
+			program_counter += 1;
 			break;
 		case 0xAC:
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			register_y = Read((operand2 << 8) + operand1);
@@ -1677,6 +1692,7 @@ void CPU::Step() {
 			program_counter += 2;
 			break;
 		case 0xAD:
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			register_a = Read((operand2 << 8) + operand1);
@@ -1692,7 +1708,7 @@ void CPU::Step() {
 			break;
 		case 0xAF:
 			illegal_opcode_triggered = true;
-			/* Abs */
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			/* LDA */

@@ -226,13 +226,13 @@ class CPU {
 
 		/* Defines addressing mode for each opcode. */
 		addressing_mode_t instruction_mode[0x100] = {
-			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
+			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
 			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
 			ABS, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
 			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
 			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
 			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
-			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, ABS, ABS, ABS, ABS,
+			IMP, IIN, IMP, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, ACU, IMM, IND, ABS, ABS, ABS,
 			REL, INI, IMP, INI, ZPX, ZPX, ZPX, ZPX, IMP, ABY, IMP, ABY, ABX, ABX, ABX, ABX,
 			IMM, IIN, IMM, IIN, ZPG, ZPG, ZPG, ZPG, IMP, IMM, IMP, IMM, ABS, ABS, ABS, ABS,
 			REL, INI, IMP, INI, ZPX, ZPX, ZPY, ZPY, IMP, ABY, IMP, ABY, ABX, ABX, ABY, ABY,
@@ -257,7 +257,7 @@ class CPU {
             2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
             2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4,
             2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 0, 5, 0, 0,
-            2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4,
+            2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
             2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 0, 4, 4, 4, 4,
             2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
             2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
