@@ -231,7 +231,7 @@ void MapperMMC1::WriteCPU(uint16_t address, uint8_t value) {
 		/* Count four writes with bit 7 clear. */
 		if(!BitCheck(value, 7) && write_counter <= 4) {
 			shift_register += BitCheck(value, 0);
-			shift_register << 1;
+			shift_register <<= 1;
 			write_counter++;
 			return;
 		}

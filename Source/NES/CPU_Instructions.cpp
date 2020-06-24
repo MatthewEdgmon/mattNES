@@ -68,7 +68,7 @@ void CPU::Step() {
 			/* Check if bit 7 is set to preserve value. */
 			SetFlag(STATUS_BIT_CARRY, (Read((operand2 << 8) + operand1) & 0x80));
 			result = (Read((operand2 << 8) + operand1) << 1);
-			Write(Read((operand2 << 8) + operand1), result);
+			Write((operand2 << 8) + operand1, result);
 			UpdateZeroNegative(result);
 			/* ORA */
 			register_a |= Read((operand2 << 8) + operand1);
@@ -201,13 +201,13 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* ASL */
 			/* Check if bit 7 is set to preserve value. */
 			SetFlag(STATUS_BIT_CARRY, (Read((operand2 << 8) + operand1 + register_y) & 0x80));
 			result = (Read((operand2 << 8) + operand1 + register_y) << 1);
-			Write(Read((operand2 << 8) + operand1 + register_y), result);
+			Write((operand2 << 8) + operand1 + register_y, result);
 			UpdateZeroNegative(result);
 			/* ORA */
 			register_a |= Read((operand2 << 8) + operand1 + register_y);
@@ -287,19 +287,22 @@ void CPU::Step() {
 			break;
 		case 0x1C:
 			illegal_opcode_triggered = true;
+			/* ABS,X */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Read((operand2 << 8) + operand1 + register_x);
 			/* NOP */
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0x1D:
+			/* ABS,X */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			register_a |= Read((operand2 << 8) + operand1 + register_x);
 			UpdateZeroNegative(register_a);
-			program_counter += 1;
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0x1E:
 			operand1 = Read(program_counter + 1);
@@ -532,7 +535,7 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* ROL */
 			/* Check if carry flag is set to preserve value. */
@@ -847,7 +850,7 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* LSR */
 			/* Check if bit 0 is set to preserve value. */
@@ -933,11 +936,13 @@ void CPU::Step() {
 			break;
 		case 0x5C:
 			illegal_opcode_triggered = true;
+			/* ABS,X */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Read((operand2 << 8) + operand1 + register_x);
 			/* NOP */
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0x5D:
 			operand1 = Read(program_counter + 1);
@@ -1035,7 +1040,7 @@ void CPU::Step() {
 			/* Check carry/unsigned overflow. */
 			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (operand1 ^ result16) & 0x80));
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (operand2 ^ result16) & 0x80));
 			register_a = static_cast<uint8_t>(result16); 
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
@@ -1128,14 +1133,15 @@ void CPU::Step() {
 			increment_pc = false;
 			break;
 		case 0x6D:
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			result = register_a + Read((operand2 << 8) + operand1) + BitCheck(register_p, STATUS_BIT_CARRY);
+			result16 = register_a + Read((operand2 << 8) + operand1) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, (result & 0x100));
+			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (Read((operand2 << 8) + operand1) ^ result) & 0x80));
-			register_a = static_cast<uint8_t>(result);
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (Read((operand2 << 8) + operand1) ^ result16) & 0x80));
+			register_a = static_cast<uint8_t>(result16);
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
 			break;
@@ -1144,9 +1150,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			/* Check if carry flag is set to preserve value. */
-			result = BitCheck(register_p, STATUS_BIT_CARRY);
+			result = (BitCheck(register_p, STATUS_BIT_CARRY) << 7);
 			/* Check if bit 0 is set to preserve value. */
-			SetFlag(STATUS_BIT_CARRY, (result & 0x01));
+			SetFlag(STATUS_BIT_CARRY, (Read((operand2 << 8) + operand1) & 0x01));
 			/* Perform shift, add old carry bit. */
 			result += (Read((operand2 << 8) + operand1) >> 1);
 			/* Finally write value. */
@@ -1212,7 +1218,7 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* ROR */
 			/* Check if carry flag is set to preserve value. */
@@ -1301,9 +1307,9 @@ void CPU::Step() {
 			operand2 = Read(program_counter + 2);
 			result16 = register_a + Read((operand2 << 8) + operand1 + register_y) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (Read((operand2 << 8) + operand1 + register_x) ^ result16) & 0x80));
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (Read((operand2 << 8) + operand1 + register_y) ^ result16) & 0x80));
 			register_a = static_cast<uint8_t>(result16);
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
@@ -1345,15 +1351,16 @@ void CPU::Step() {
 			Read((operand2 << 8) + operand1 + register_x);
 			/* NOP */
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0x7D:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			result16 = register_a + Read((operand2 << 8) + operand1 + register_x) + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
+			SetFlag(STATUS_BIT_CARRY, (result16 & 0x100));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~Read((operand2 << 8) + operand1 + register_x) ^ result16) & 0x80));
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (Read((operand2 << 8) + operand1 + register_x) ^ result16) & 0x80));
 			register_a = static_cast<uint8_t>(result16);
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
@@ -1364,9 +1371,9 @@ void CPU::Step() {
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			/* Check if carry flag is set to preserve value. */
-			result = BitCheck(register_p, STATUS_BIT_CARRY);
+			result = (BitCheck(register_p, STATUS_BIT_CARRY) << 7);
 			/* Check if bit 0 is set to preserve value. */
-			SetFlag(STATUS_BIT_CARRY, (result & 0x01));
+			SetFlag(STATUS_BIT_CARRY, (Read((operand2 << 8) + operand1 + register_x) & 0x01));
 			/* Perform shift, add old carry bit. */
 			result += (Read((operand2 << 8) + operand1 + register_x) >> 1);
 			/* Finally write value. */
@@ -1403,13 +1410,14 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			Read(program_counter + 1);
 			/* NOP */
+			program_counter += 1;
 			break;
 		case 0x81:
 			/* (d,X) */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(static_cast<uint8_t>(operand1 + register_x + 1));
 			operand1 = Read(static_cast<uint8_t>(operand1 + register_x));
-			Write(Read((operand2 << 8) + operand1), register_a);
+			Write((operand2 << 8) + operand1, register_a);
 			program_counter += 1;
 			break;
 		case 0x82:
@@ -1426,7 +1434,7 @@ void CPU::Step() {
 			/* AND */
 			result = register_a & register_x;
 			/* STX */
-			Write(Read((operand2 << 8) + operand1), result);
+			Write((operand2 << 8) + operand1, result);
 			program_counter += 1;
 			break;
 		case 0x84:
@@ -1494,7 +1502,7 @@ void CPU::Step() {
 			break;
 		case 0x8F:
 			illegal_opcode_triggered = true;
-			/* Abs */
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			/* AND */
@@ -1513,14 +1521,11 @@ void CPU::Step() {
 			}
 			break;
 		case 0x91:
-			/* Read location from Zero-Page to load from. */
+			/* d,(Y) */
 			operand1 = Read(program_counter + 1);
-			/* Read the Zero-Page location plus one to get the upper half of the address. */
 			operand2 = Read(operand1 + 1);
-			/* Read the Zero-Page location to get the lower half of the address. */
 			operand1 = Read(operand1);
-			/* Finally, set the memory location to the contents of register A from operand 1 and 2 plus register Y. */
-			Write(Read(((operand2 << 8) + operand1) + register_y), register_a);
+			Write((operand2 << 8) + operand1 + register_y, register_a);
 			program_counter += 1;
 			break;
 		case 0x92:
@@ -1729,17 +1734,15 @@ void CPU::Step() {
 			}
 			break;
 		case 0xB1:
-			/* Read location from Zero-Page to load from. */
+			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			/* Read the Zero-Page location plus one to get the upper half of the address. */
-			operand2 = Read(operand1 + 1);
-			/* Read the Zero-Page location to get the lower half of the address. */
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
-			/* Finally, set register A to be the contents of the memory location from operand 1 and 2 plus register Y. */
+			/* LDA */
 			register_a = Read(((operand2 << 8) + operand1) + register_y);
 			UpdateZeroNegative(register_a);
-			program_counter += 1;
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 1;
 			break;
 		case 0xB2:
 			illegal_opcode_triggered = true;
@@ -1750,7 +1753,7 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* LDA */
 			register_a = Read((operand2 << 8) + operand1 + register_y);
@@ -1785,8 +1788,9 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* d,Y */
 			operand1 = Read(program_counter + 1) + register_y;
+			operand2 = Read(operand1);
 			/* LDA */
-			register_a = operand1;
+			register_a = operand2;
 			UpdateZeroNegative(register_a);
 			/* TAX */
 			register_x = register_a;
@@ -1843,7 +1847,7 @@ void CPU::Step() {
 			break;
 		case 0xBF:
 			illegal_opcode_triggered = true;
-			/* Abs */
+			/* ABS */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			/* LDA */
@@ -1887,10 +1891,10 @@ void CPU::Step() {
 			/* DEC */
 			result = Read((operand2 << 8) + operand1);
 			result--;
-			Write(Read((operand2 << 8) + operand1), result);
+			Write((operand2 << 8) + operand1, result);
 			UpdateZeroNegative(result);
 			/* CMP */
-			result = (register_a - Read((operand2 << 8) + operand1));
+			result = (register_a - result);
 			SetFlag(STATUS_BIT_CARRY,    (register_a >= Read((operand2 << 8) + operand1)));
 			SetFlag(STATUS_BIT_ZERO,     (register_a == Read((operand2 << 8) + operand1)));
 			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
@@ -2017,9 +2021,9 @@ void CPU::Step() {
 			}
 			break;
 		case 0xD1:
-			/* Fetch address from zero page, add register Y to that address. */
+			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			result = (register_a - Read((operand2) << 8) + operand1 + register_y);
 			SetFlag(STATUS_BIT_CARRY,    (register_a >= Read(((operand2) << 8) + operand1 + register_y)));
@@ -2042,12 +2046,12 @@ void CPU::Step() {
 			/* DEC */
 			result = Read((operand2 << 8) + operand1 + register_y);
 			result--;
-			Write(Read((operand2 << 8) + operand1 + register_y), result);
+			Write((operand2 << 8) + operand1 + register_y, result);
 			UpdateZeroNegative(result);
 			/* CMP */
-			result = (register_a - Read((operand2) << 8) + operand1 + register_y);
-			SetFlag(STATUS_BIT_CARRY,    (register_a >= Read(((operand2) << 8) + operand1 + register_y)));
-			SetFlag(STATUS_BIT_ZERO,     (register_a == Read(((operand2) << 8) + operand1 + register_y)));
+			result = (register_a - result);
+			SetFlag(STATUS_BIT_CARRY,    (register_a >= Read((operand2 << 8) + operand1 + register_y)));
+			SetFlag(STATUS_BIT_ZERO,     (register_a == Read((operand2 << 8) + operand1 + register_y)));
 			SetFlag(STATUS_BIT_NEGATIVE, (result >= 0x80));
 			// TODO: Add 1 to cycle count if crossing page boundary.
 			program_counter += 1;
@@ -2130,11 +2134,13 @@ void CPU::Step() {
 			break;
 		case 0xDC:
 			illegal_opcode_triggered = true;
+			/* ABS,X */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Read((operand2 << 8) + operand1 + register_x);
 			/* NOP */
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0xDD:
 			operand1 = Read(program_counter + 1);
@@ -2209,7 +2215,7 @@ void CPU::Step() {
 			/* INC */
 			result = Read((operand2 << 8) + operand1);
 			result++;
-			Write(Read((operand2 << 8) + operand1), result);
+			Write((operand2 << 8) + operand1, result);
 			UpdateZeroNegative(result);
 			/* SBC */
 			result16 = (register_a - (Read((operand2 << 8) + operand1)) - !BitCheck(register_p, STATUS_BIT_CARRY));
@@ -2291,11 +2297,11 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* IMM */
 			operand1 = Read(program_counter + 1);
-			result16 = register_a + operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
+			result16 = register_a + ~operand1 + BitCheck(register_p, STATUS_BIT_CARRY);
 			/* Check carry/unsigned overflow. */
 			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (operand1 ^ result16) & 0x80));
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ operand1) & (register_a ^ result16) & 0x80));
 			register_a = static_cast<uint8_t>(result16);
 			UpdateZeroNegative(register_a);
 			program_counter += 1;
@@ -2384,7 +2390,7 @@ void CPU::Step() {
 			illegal_opcode_triggered = true;
 			/* (d),Y */
 			operand1 = Read(program_counter + 1);
-			operand2 = Read(operand1 + 1);
+			operand2 = Read(static_cast<uint8_t>(operand1 + 1));
 			operand1 = Read(operand1);
 			/* INC */
 			result = Read((operand2 << 8) + operand1 + register_y);
@@ -2490,21 +2496,23 @@ void CPU::Step() {
 			break;
 		case 0xFC:
 			illegal_opcode_triggered = true;
+			/* ABS,X */
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
 			Read((operand2 << 8) + operand1 + register_x);
 			/* NOP */
 			// TODO: Add 1 to cycle count if crossing page boundary.
+			program_counter += 2;
 			break;
 		case 0xFD:
 			operand1 = Read(program_counter + 1);
 			operand2 = Read(program_counter + 2);
-			result = (register_a - Read((operand2 << 8) + operand1 + register_x) - !BitCheck(register_p, STATUS_BIT_CARRY));
+			result16 = (register_a - Read((operand2 << 8) + operand1 + register_x) - !BitCheck(register_p, STATUS_BIT_CARRY));
 			/* Check carry/unsigned overflow. */
-			SetFlag(STATUS_BIT_CARRY, ((result & 0x100) == 0));
+			SetFlag(STATUS_BIT_CARRY, ((result16 & 0x100) == 0));
 			/* Check signed overflow. */
-			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result) & (~Read((operand2 << 8) + operand1 + register_x) ^ result) & 0x80));
-			register_a = static_cast<uint8_t>(result);
+			SetFlag(STATUS_BIT_OVERFLOW, ((register_a ^ result16) & (~Read((operand2 << 8) + operand1 + register_x) ^ result16) & 0x80));
+			register_a = static_cast<uint8_t>(result16);
 			UpdateZeroNegative(register_a);
 			program_counter += 2;
 			// TODO: Add 1 to cycle count if crossing page boundary.

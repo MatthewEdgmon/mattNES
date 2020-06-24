@@ -140,9 +140,9 @@ void Emulator::Initialize() {
 	//ironsword.nes
 	//cobra triangles.nes
 
-	// TODO: Fix HACK
-	// TODO: Figure out why the nintendulator log has P equal $24 after PHA pushing $04 to the stack and then PLP
-	// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending
+	// TODO: nestest.nes Nintendulator log expects opcode ISC to be named "ISB", decide which I actually want.
+	// TODO: Seperate Interrupt() into two, one for requesting the interrupt, one for actually handling it, and a bool owned by the class for checking whether an interrupt is pending.
+	// TODO: Illegal opcodes that combine two instructions need to perform Read and Write the correct number of times, not just at the start of the instruction.
 
 	/* Create emulated system. */
 	nes_system = std::make_unique<NESSystem>(NESSystem::RP2A03, NESSystem::RP2C02, NESSystem::NTSC);

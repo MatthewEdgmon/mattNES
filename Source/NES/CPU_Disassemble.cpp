@@ -34,7 +34,7 @@
 #include "CPU.hpp"
 #include "PPU.hpp"
 
-inline uint16_t CalculateIndirect(CPU* cpu, uint8_t operand1, uint8_t operand2) {
+uint16_t CalculateIndirect(CPU* cpu, uint8_t operand1, uint8_t operand2) {
 	
 	uint16_t target = 0x0000;
 
@@ -52,7 +52,7 @@ inline uint16_t CalculateIndirect(CPU* cpu, uint8_t operand1, uint8_t operand2) 
 	return target;
 }
 
-inline uint16_t CalculateIndirectIndexed(CPU* cpu, uint8_t operand1) {
+uint16_t CalculateIndirectIndexed(CPU* cpu, uint8_t operand1) {
 	/* Read address stored at operand1 in zero page. */
 	return ((cpu->PeekMemory(operand1 + 1) << 8) + cpu->PeekMemory(operand1) + cpu->GetRegisterY());
 }
@@ -61,7 +61,6 @@ std::string CPU::StepDisassembler() {
 
 	/*
 	 * When disassembling, keep in mind the change the instruction is doing to the processor state has not happened yet.
-	 * For example instruction C8 - INY must show register_y with one added to show the change that will happen.
 	 */
 
 	std::ostringstream buffer;
@@ -72,6 +71,7 @@ std::string CPU::StepDisassembler() {
 
 	buffer << HEX4X(program_counter) << "  ";
 	
+	/* Output 1 - 3 bytes depending on instruction sizing. */
 	switch(instruction_sizes[dis_instruction]) {
 		case 1:
 			buffer << HEX2X(dis_instruction) << "       ";
@@ -88,35 +88,16 @@ std::string CPU::StepDisassembler() {
 	}
 
 	/* Output * before instruction name if illegal opcode. */
-	switch(instruction_opcode[dis_instruction]) {
-		case AHX:
-		case ALR:
-		case ANC:
-		case ARR:
-		case AXS:
-		case DCP:
-		case ISC:
-		case LAS:
-		case LAX:
-		case RLA:
-		case RRA:
-		case SAX:
-		case SLO:
-		case SRE:
-		case TAS:
-		case SHX:
-		case SHY:
-		case STP:
-		case XAA:
-			buffer << "*";
-			break;
-		default:
-			buffer << " ";
-			break;
+	if(instruction_is_illegal[dis_instruction]) {
+		buffer << "*";
+	} else {
+		buffer << " ";
 	}
 
+	/* Output the instruction name. */
 	buffer << instruction_names[dis_instruction];
 
+	/* Output the instruction arguments, formatted based on the addressing mode. */
 	switch(instruction_mode[dis_instruction]) {
 		case IMP:
 			break;
@@ -130,10 +111,10 @@ std::string CPU::StepDisassembler() {
 			buffer << " $" << HEX2X(dis_operand1) << " = " << HEX2X(PeekMemory(dis_operand1));
 			break;
 		case ZPX:
-			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(register_x) << " = " << HEX2X(dis_operand1 + register_x);
+			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(dis_operand1 + register_x) << " = " << HEX2X(PeekMemory(static_cast<uint8_t>(dis_operand1 + register_x)));
 			break;
 		case ZPY:
-			buffer << " $" << HEX2X(dis_operand1) << ",X @ " << HEX2X(register_y) << " = " << HEX2X(dis_operand1 + register_y);
+			buffer << " $" << HEX2X(dis_operand1) << ",Y @ " << HEX2X(dis_operand1 + register_y) << " = " << HEX2X(PeekMemory(static_cast<uint8_t>(dis_operand1 + register_y)));
 			break;
 		case REL:
 			// Always off by two for some reason??
@@ -141,55 +122,23 @@ std::string CPU::StepDisassembler() {
 			break;
 		case ABS:
 			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1);
-			switch(instruction_opcode[dis_instruction]) {
-				case LDA:
-				case LDX:
-				case LDY:
-				case STA:
-				case STX:
-					buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
-					break;
-				default:
-					break;
+			if(instruction_opcode[dis_instruction] != JMP && instruction_opcode[dis_instruction] != JSR) {
+				buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
 			}
 			break;
 		case ABX:
-			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << ",X @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_x);
-			switch(instruction_opcode[dis_instruction]) {
-				case LDA:
-				case LDX:
-				case LDY:
-				case STA:
-				case STX:
-				case STY:
-					buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
-					break;
-				default:
-					break;
-			}
+			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << ",X @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_x) << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1 + register_x));
 			break;
 		case ABY:
-			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << ",Y @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y);
-			switch(instruction_opcode[dis_instruction]) {
-				case LDA:
-				case LDX:
-				case LDY:
-				case STA:
-				case STX:
-				case STY:
-					buffer << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1));
-					break;
-				default:
-					break;
-			}
+			buffer << " $" << HEX4X((dis_operand2 << 8) + dis_operand1) << ",Y @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1 + register_y));
 			break;
 		case IND:
 			buffer << " ($" << HEX4X((dis_operand2 << 8) + dis_operand1) << ") = " << HEX4X((PeekMemory((dis_operand2 << 8) + dis_operand1 + 1) << 8) + (PeekMemory((dis_operand2 << 8) + operand1 + 1)));
 			break;
 		case IIN:
-			buffer << " ($" << HEX2X(dis_operand1) << ",X) @ " << HEX2X((uint8_t)(dis_operand1 + register_x)) << " = ";
-			dis_operand1 = Read(program_counter + 1) + register_x;
-			dis_operand2 = Read(program_counter + 1) + register_x + 1;
+			buffer << " ($" << HEX2X(dis_operand1) << ",X) @ " << HEX2X(dis_operand1 + register_x) << " = ";
+			dis_operand1 = PeekMemory(program_counter + 1) + register_x;
+			dis_operand2 = PeekMemory(program_counter + 1) + register_x + 1;
 			buffer << HEX4X((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)) << " = " << HEX2X(PeekMemory((PeekMemory(dis_operand2) << 8) + PeekMemory(dis_operand1)));
 			break;
 		case INI:
@@ -197,7 +146,7 @@ std::string CPU::StepDisassembler() {
 			dis_operand1 = PeekMemory(program_counter + 1);
 			dis_operand2 = PeekMemory(dis_operand1 + 1);
 			dis_operand1 = PeekMemory(dis_operand1);
-			buffer << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " = " << HEX2X(PeekMemory(dis_operand2 << 8) + dis_operand1 + register_y);
+			buffer << HEX4X((dis_operand2 << 8) + dis_operand1) << " @ " << HEX4X((dis_operand2 << 8) + dis_operand1 + register_y) << " = " << HEX2X(PeekMemory((dis_operand2 << 8) + dis_operand1 + register_y));
 			break;
 		default:
 			buffer << " Unknown addressing mode?";
