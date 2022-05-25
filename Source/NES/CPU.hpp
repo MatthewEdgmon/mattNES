@@ -146,43 +146,43 @@ class CPU {
 
 		NESSystem* nes_system;
 
-		uint8_t cpu_memory[0x800];
+		uint8_t cpu_memory[0x800] { 0 };
 
 		/* Vectors */
-		uint16_t vector_nmi;
-		uint16_t vector_irq;
-		uint16_t vector_rst;
+		uint16_t vector_nmi { 0 };
+		uint16_t vector_irq { 0 };
+		uint16_t vector_rst { 0 };
 
 		/* CPU registers */
-		uint16_t program_counter;
-		uint8_t register_p;
-		uint8_t register_a;
-		uint8_t register_x;
-		uint8_t register_y;
-		uint8_t register_s;
+		uint16_t program_counter { 0 };
+		uint8_t register_p { 0 };
+		uint8_t register_a { 0 };
+		uint8_t register_x { 0 };
+		uint8_t register_y { 0 };
+		uint8_t register_s { 0 };
 
 		/* Instruction being executed at current step. */
-		uint8_t instruction;
+		uint8_t instruction { 0 };
 
 		/* Argument storage for instructions. */
-		uint8_t operand1;
-		uint8_t operand2;
+		uint8_t operand1 { 0 };
+		uint8_t operand2 { 0 };
 
 		/* Instruction storage for disassembly. */
-		uint8_t dis_instruction;
+		uint8_t dis_instruction { 0 };
 
 		/* Argument storage for disassembly. */
-		uint8_t dis_operand1;
-		uint8_t dis_operand2;
+		uint8_t dis_operand1 { 0 };
+		uint8_t dis_operand2 { 0 };
 
-		bool halted;
-		bool illegal_opcode_triggered;
-		bool halt_on_illegal_opcode;
-		bool increment_pc;
+		bool halted { false };
+		bool illegal_opcode_triggered { false };
+		bool halt_on_illegal_opcode { false };
+		bool increment_pc { false };
 
-		bool test_mode;
+		bool test_mode { false };
 
-		uint64_t cycles;
+		uint64_t cycles { 0 };
 
 		/* Associates instruction byte with instruction names. */
 		std::string instruction_names[0x100] = {

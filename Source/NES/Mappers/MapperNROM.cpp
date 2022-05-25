@@ -40,7 +40,7 @@ MapperNROM::~MapperNROM() {
 void MapperNROM::Initialize(Cartridge* cartridge) {
 	this->cartridge = cartridge;
 
-	prg_rom_firstKB = DefineBank(0x8000, 0xBFFF, PRG_ROM, true);
+	prg_rom_firstKB = DefineBank(0x8000, 0xBFFF, bank_type::PRG_ROM, true);
 
 	for(size_t i = 0; i <= 0x3FFF; i++) {
 		prg_rom_firstKB->data[i] = cartridge->GetFileMemory()[i + cartridge->GetHeaderOffset()];
@@ -50,7 +50,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 
 	/* Check if second KB, if not mirror first kb.*/
 	if(cartridge->GetHeader()->prg_rom_size == 2) {
-		prg_rom_secondKB = DefineBank(0xC000, 0xFFFF, PRG_ROM, true);
+		prg_rom_secondKB = DefineBank(0xC000, 0xFFFF, bank_type::PRG_ROM, true);
 
 		for(size_t i = 0; i <= 0x3FFF; i++) {
 			prg_rom_secondKB->data[i] = cartridge->GetFileMemory()[i + 0x4000 + cartridge->GetHeaderOffset()];
@@ -61,7 +61,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 		memory_map_cpu[0xC000] = prg_rom_firstKB;
 	}
 
-	prg_ram = DefineBank(0x6000, 0x7FFF, PRG_RAM, false);
+	prg_ram = DefineBank(0x6000, 0x7FFF, bank_type::PRG_RAM, false);
 
 	/* Check if Family BASIC ROM, and setup PRG RAM if so. */
 	if(cartridge->GetHeader()->prg_ram_size == 1){
@@ -69,7 +69,7 @@ void MapperNROM::Initialize(Cartridge* cartridge) {
 		memory_map_cpu[0x6000] = prg_ram;
 	}
 
-	chr_rom = DefineBank(0x0000, 0x1FFF, CHR_ROM, true);
+	chr_rom = DefineBank(0x0000, 0x1FFF, bank_type::CHR_ROM, true);
 
 	/* Skip over PRG ROM sections. */
 	for(size_t i = 0; i <= 0x1FFF; i++) {

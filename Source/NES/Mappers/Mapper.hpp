@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-typedef enum bank_type {
+typedef enum class bank_type {
 	PRG_ROM,
 	PRG_RAM,
 	CHR_ROM,
@@ -34,12 +34,12 @@ typedef enum bank_type {
 } bank_type_t;
 
 typedef struct rom_bank {
-	bank_type type;
-	uint16_t rom_address_start;
-	uint16_t rom_address_end;
-	uint16_t size;
-	std::vector<uint8_t> data;
-	bool mapped;
+	bank_type type { bank_type::PRG_ROM };
+	uint16_t rom_address_start { 0 };
+	uint16_t rom_address_end { 0 };
+	uint16_t size { 0 };
+	std::vector<uint8_t> data { 0 };
+	bool mapped { false };
 } rom_bank_t;
 
 class Cartridge;

@@ -78,14 +78,14 @@ void NESSystem::Reset(bool hard) {
 
 void NESSystem::Frame() {
 
-	if(region_emulation_mode == NTSC) {
+	if(region_emulation_mode == RegionEmulationMode::NTSC) {
 		/* For NTSC, there is exactly three PPU steps per CPU step. */
 		cpu->Step();
 		ppu->Step();
 		ppu->Step();
 		ppu->Step();
 		apu->Step();
-	} else if(region_emulation_mode == PAL) {
+	} else if(region_emulation_mode == RegionEmulationMode::PAL) {
 		/* TODO: Handle PAL emulation, which is 3.2 PPU steps per CPU step. */
 	}
 	

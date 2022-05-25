@@ -27,7 +27,14 @@
 #include "CPU.hpp"
 
 APU::APU(NESSystem* nes_system) : nes_system(nes_system) {
-
+	
+	for(size_t i = 0; i < 31; i++) {
+		pulse_table[i] = 95.52 / (8128.0 / (float) i + 100);
+	}
+	
+	for(size_t i = 0; i < 31; i++) {
+		tri_noise_dmc_table[i] = 163.67 / (24329.0 / (float) i + 100);
+	}
 }
 
 APU::~APU() {
@@ -48,6 +55,17 @@ void APU::Reset(bool hard) {
 
 void APU::Step() {
 
+}
+
+float APU::GetOutputState() {
+
+	/* Retrieve output values from channels. */
+	float output = pulse_table[0xF + 0x0] + tri_noise_dmc_table[(3 * 0x00) + (2 * 0x00)];
+
+	/* Perform filters. */
+	// ...
+
+	return output;
 }
 
 uint8_t APU::ReadAPU(uint16_t address) {

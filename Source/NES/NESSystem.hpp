@@ -33,14 +33,14 @@ class PPU;
 class NESSystem {
 
 	public:
-		typedef enum CPUEmulationMode {
+		typedef enum class CPUEmulationMode {
 			RP2A03,
 			RP2A03G,
 			RP2A07G,	
 			DENDY
 		} cpu_emulation_mode_t;
 
-		typedef enum PPUEmulationMode {
+		typedef enum class PPUEmulationMode {
 			RP2C02, /* North America NTSC */
 			RP2C02A,
 			RP2C03,
@@ -54,7 +54,7 @@ class NESSystem {
 			RP2C07 /* PAL */
 		} ppu_emulation_mode_t;
 
-		typedef enum RegionEmulationMode {
+		typedef enum class RegionEmulationMode {
 			NTSC,
 			PAL
 		} region_emulation_mode_t;
@@ -93,13 +93,12 @@ class NESSystem {
 		std::unique_ptr<APU> apu;
 		std::unique_ptr<CPU> cpu;
 		std::unique_ptr<PPU> ppu;
-		
 
 		/* Value on the data busses between CPU, APU, and PPU to emulate bus conflict and floating bus behaviour. */
-		uint8_t floating_bus_value;
+		uint8_t floating_bus_value { 0 };
 		// TODO: Depending on which chip had the last cycle, floating capacitance on the bus will be different. Use these two values to emulate.
-		uint8_t floating_bus_value_cpu;
-		uint8_t floating_bus_value_ppu;
+		uint8_t floating_bus_value_cpu { 0 };
+		uint8_t floating_bus_value_ppu { 0 };
 };
 
 #endif /* __NES_SYSTEM_HPP__ */

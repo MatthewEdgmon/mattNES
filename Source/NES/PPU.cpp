@@ -40,10 +40,12 @@ PPU::~PPU() {
 void PPU::Initialize() {
 
 	/* Setup and clear PPU video buffer, and set up pointer to it. */
-	ppu_buffer.resize(NES_SCREEN_WIDTH * (NES_SCREEN_HEIGHT + 1) + 1, 0);
+	ppu_buffer.resize(ScreenWidth * (ScreenHeight + 1) + 1, 0);
 
 	/* Setup and clear VRAM */
-	ppu_memory.resize(0x1000, 0);
+	// TODO: the memory is not always actually this size, it depends on the cartridge.
+	// TODO: Does the top of the memory always hold the palette values even on startup? Is it loaded by the cartridge?
+	ppu_memory.resize(0x4000, 0);
 
 	/* Setup and clear primary/secondary OAM */
 	object_attribute_memory.resize(256, 0);
@@ -87,32 +89,42 @@ void PPU::Step() {
 	/* Visible scanlines (0 - 240). */
 	if(current_scanline <= 240) {
 
-		/* Fetch name table entry from 0x2000 */
-		uint8_t nametable = ReadPPU(0x2000);
+		uint16_t nametable_base_address = 0x2000;
 
-		/* Fetch corresponding attribute table entry from 0x23C0, and increment VRAM address in same row. */
-		uint8_t attrtable = ReadPPU(0x23C0);
+		/* Bits 0 and 1 of PPUCTRL (0x2000 write) determine base nametable address. */
+		switch(ppu_ctrl & 0x03) {
+			case 0:
+				nametable_base_address = 0x2000;
+			case 1:
+				nametable_base_address = 0x2400;
+			case 2:
+				nametable_base_address = 0x2800;
+			case 3:
+				nametable_base_address = 0x2C00;
+			default:
+				break;
+		}
 
-		/* Fetch the palette from the four quadrants of the attribute table. */
-		uint8_t topleft, topright, bottomleft, bottomright;
+		/* The attribute table base address is determed by the nametable base address. */
+		uint16_t attribute_table_base_address = nametable_base_address + 0x03C0;
 
-		topleft = attrtable & 0x03;
-		topright = attrtable & 0x0C;
-		bottomleft = attrtable & 0x30;
-		bottomright = attrtable & 0xC0;
+		/* Bit 4 of PPUCTRL (0x2000 write) determine background patterntable address. */
+		uint16_t background_patterntable_address = (BitCheck(ppu_ctrl, 4) << 12);
 
-		/* Bit 4 is always set because we're drawing backgrounds only for now. */
-		uint8_t palette_index = 0x10;
+		/* Fetch name table entry. */
+		uint16_t nametable_entry = ReadPPU(nametable_base_address);
 
-		/* Adding top left for now. */
-		palette_index += topleft;
+		/* Fetch attribute table entry. */
+		uint16_t attribute_entry = ReadPPU(attribute_table_base_address);
 
-		/* Fetch the color from the palette itself at 0x3F00 through 0x3F0F */
-		uint8_t palette = ReadPPU(0x3F00 + palette_index);
-
-		/* Tiles are stored as 16 bytes, the first 8 of which are the LSBs of a pixel, and the next 8 the MSBs.*/
-		uint8_t tile_lsb[8];
-		uint8_t tile_msb[8];
+		/* Bit 13 of the address into PPU memory controls whether the pattern table is "left" (0x0000 - 0x0FFF) or "right" (0x1000 - 0x1FFF). */
+		if(ppu_address & 0x1000) {
+			uint16_t pattern_entry = ReadPPU(0x0000 + current_cycle);
+			pattern_entry |= ReadPPU(0x0001 + current_cycle);
+		} else {
+			uint16_t pattern_entry = ReadPPU(0x1000 + current_cycle);
+			pattern_entry |= ReadPPU(0x1001 + current_cycle);
+		}
 
 		// Each of these come together to form a two-bit value that chooses from one of...
 
@@ -126,6 +138,8 @@ void PPU::Step() {
 		// 0x3F15 -> 4-byte Three colors, each of which is index into NES palette. Last byte is mirror of 0x3F00. Sprites only.
 		// 0x3F19 -> 4-byte Three colors, each of which is index into NES palette. Last byte is mirror of 0x3F00. Sprites only.
 		// 0x3F1D -> 4-byte Three colors, each of which is index into NES palette. Last byte is mirror of 0x3F00. Sprites only.
+
+		/* SPRITES */
 
 		/* Get the color emphasis. */
 		uint8_t emphasis = 0x00;
@@ -203,11 +217,14 @@ void PPU::ProcessVisibleScanline() {
 	if(current_cycle >= 1   && current_cycle <= 256) {
 
 		/* Generate a new test color every frame just to test VBlank stuff. */
-		if(frame_count % 2 == 0) {
+		/*if(frame_count % 2 == 0) {
 			DrawPixel(current_cycle, current_scanline, 0xFF00FFFF);
 		} else {
 			DrawPixel(current_cycle, current_scanline, 0xFFFF00FF);
-		}
+		}*/
+
+		DrawPixel(current_cycle, current_scanline, palette[(current_cycle + frame_count) % 64]);
+
 	}
 
 	/* No longer visible. */
@@ -246,43 +263,47 @@ void PPU::ReadTile() {
 
 void PPU::DrawPixel() {
 
-	uint32_t buffer_position = (current_scanline * NES_SCREEN_WIDTH) + current_cycle;
+	uint32_t buffer_position = (current_scanline * ScreenWidth) + current_cycle;
 
 	uint8_t pallete = 0;
 
 	//uint8_t pixel_color = pattern_table_shift_register_1;
 
 	ppu_buffer[buffer_position];
+
+	return;
 }
 
 void PPU::DrawPixel(int x, int y, uint32_t color) {
 
-	// TODO: Turn these into assertations.
-	if(x > NES_SCREEN_WIDTH) {
+#ifdef _DEBUG
+	if(!InVisibleSection(x, y)) {
+		// TODO: Replace this with a proper error function when we get one.
+		std::cout << "ERROR: Tried to draw outside visible screen bounds at (" << x << ", " << y << ")!\n";
 		return;
 	}
+#endif
 
-	if(y > NES_SCREEN_HEIGHT) {
-		return;
-	}
+	uint32_t buffer_position = (y * ScreenWidth) + x;
 
-	ppu_buffer[(y * NES_SCREEN_WIDTH) + x] = color;
+	ppu_buffer[buffer_position] = color;
 
 	return;
 }
 
 void PPU::DrawPixel(int x, int y, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha) {
 
-	// TODO: Turn these into assertations.
-	if(x > NES_SCREEN_WIDTH) {
+#ifdef _DEBUG
+	if (!InVisibleSection(x, y)) {
+		// TODO: Replace this with a proper error function when we get one.
+		std::cout << "ERROR: Tried to draw outside visible screen bounds at (" << x << ", " << y << ")!\n";
 		return;
 	}
+#endif
 
-	if(y > NES_SCREEN_HEIGHT) {
-		return;
-	}
+	uint32_t buffer_position = (y * ScreenWidth) + x;
 
-	ppu_buffer[(y * NES_SCREEN_WIDTH) + x] = (alpha << 24) + (red << 16) + (green << 8) + (blue);
+	ppu_buffer[buffer_position] = (alpha << 24) + (red << 16) + (green << 8) + (blue);
 
 	return;
 }

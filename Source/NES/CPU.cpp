@@ -188,8 +188,8 @@ void CPU::Interrupt(interrupt_type_t interrupt_type) {
 	}
 
 	/* Push PC high byte, PC low byte, and processor flags in that order. */
-	Push(program_counter >> 8);
-	Push(program_counter);
+	Push(uint8_t(program_counter >> 8));
+	Push(uint8_t(program_counter));
 
 	uint8_t flags_to_push = BitCheck(register_p, STATUS_BIT_NEGATIVE)          << 7 |
 							BitCheck(register_p, STATUS_BIT_OVERFLOW)          << 6 |

@@ -78,12 +78,12 @@ void MapperMMC1::Initialize(Cartridge* cartridge) {
 	/* Start with 16k PRG swapping, on 0x8000 - 0xBFFF. */
 	control_register = 0x0C;
 
-	prg_ram_bank = DefineBank(0x6000, 0x7FFF, PRG_RAM, true);
-	prg_rom_bank_1 = DefineBank(0x8000, 0xBFFF, PRG_ROM, true);
-	prg_rom_bank_2 = DefineBank(0xC000, 0xFFFF, PRG_ROM, true);
+	prg_ram_bank = DefineBank(0x6000, 0x7FFF, bank_type::PRG_RAM, true);
+	prg_rom_bank_1 = DefineBank(0x8000, 0xBFFF, bank_type::PRG_ROM, true);
+	prg_rom_bank_2 = DefineBank(0xC000, 0xFFFF, bank_type::PRG_ROM, true);
 
-	chr_rom_bank_1 = DefineBank(0x0000, 0x0FFF, CHR_ROM, true);
-	chr_rom_bank_2 = DefineBank(0x1000, 0x1FFF, CHR_ROM, true);
+	chr_rom_bank_1 = DefineBank(0x0000, 0x0FFF, bank_type::CHR_ROM, true);
+	chr_rom_bank_2 = DefineBank(0x1000, 0x1FFF, bank_type::CHR_ROM, true);
 
 	memory_map_cpu[prg_ram_bank->rom_address_start] = prg_ram_bank;
 	memory_map_cpu[prg_rom_bank_1->rom_address_start] = prg_rom_bank_1;

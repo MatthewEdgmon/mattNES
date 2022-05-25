@@ -19,4 +19,4 @@ os.makedirs(thirdPartyFolder, exist_ok=True)
 os.chdir(thirdPartyFolder)
 
 # SDL2
-DownloadZIP('https://www.libsdl.org/release/SDL2-devel-2.0.10-VC.zip', 'SDL2-2.0.10')
+DownloadZIP('https://www.libsdl.org/release/SDL2-devel-2.0.22-VC.zip', 'SDL2-2.0.22')
