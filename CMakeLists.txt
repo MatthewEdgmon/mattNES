@@ -36,6 +36,8 @@ set(SOURCE_FILES Source/Main.cpp
                  Source/NES/CPU_Instructions.cpp
                  Source/NES/CPU.cpp
                  Source/NES/CPU.hpp
+                 Source/NES/DynaRecEngine.cpp
+                 Source/NES/DynaRecEngine.hpp
                  Source/NES/iNESHeader.hpp
                  Source/NES/NESSystem.cpp
                  Source/NES/NESSystem.hpp

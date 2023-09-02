@@ -20,16 +20,18 @@
 
 #include <iostream>
 
+#include <SDL.h>
+
 #include "../BitOps.hpp"
 #include "../HexOutput.hpp"
+#include "APU.hpp"
 #include "ControllerIO.hpp"
 #include "Cartridge.hpp"
-#include "APU.hpp"
 #include "CPU.hpp"
+#include "DynaRecEngine.hpp"
 #include "PPU.hpp"
-
 #include "NESSystem.hpp"
-#include <SDL.h>
+
 
 NESSystem::NESSystem(cpu_emulation_mode_t cpu_type, ppu_emulation_mode_t ppu_type, region_emulation_mode_t region) {
 	cpu_emulation_mode = cpu_type;
@@ -60,10 +62,14 @@ void NESSystem::Initialize(std::string rom_file_name) {
 	cpu = std::make_unique<CPU>(this);
 	cpu->Initialize();
 
+	cpu_dynarec = std::make_unique<DynaRecEngine>(this);
+	cpu_dynarec->Initialize();
+
 	Reset(true);
 }
 
 void NESSystem::Shutdown() {
+	cpu_dynarec->Shutdown();
 	cpu->Shutdown();
 	ppu->Shutdown();
 	apu->Shutdown();
@@ -73,6 +79,7 @@ void NESSystem::Reset(bool hard) {
 	controller_io->Reset();
 	apu->Reset(hard);
 	cpu->Reset(hard);
+	cpu_dynarec->Reset(hard);
 	ppu->Reset(hard);
 }
 
@@ -80,6 +87,8 @@ void NESSystem::Frame() {
 
 	if(region_emulation_mode == RegionEmulationMode::NTSC) {
 		/* For NTSC, there is exactly three PPU steps per CPU step. */
+		// TODO: Replace CPU with DynaRecEngine
+		cpu_dynarec->Step();
 		cpu->Step();
 		ppu->Step();
 		ppu->Step();

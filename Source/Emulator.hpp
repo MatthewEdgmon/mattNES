@@ -22,6 +22,7 @@
 #define __EMULATOR_HPP__
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <utility>
 

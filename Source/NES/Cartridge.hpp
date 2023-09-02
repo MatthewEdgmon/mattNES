@@ -21,7 +21,7 @@
 #ifndef __CARTRIDGE_HPP__
 #define __CARTRIDGE_HPP__
 
-#include "Mappers\Mapper.hpp"
+#include "./Mappers/Mapper.hpp"
 #include "iNESHeader.hpp"
 #include "UNIFHeader.hpp"
 

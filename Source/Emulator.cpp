@@ -114,7 +114,7 @@ void Emulator::Initialize() {
 	}
 
 	/* Begin playing audio. */
-	SDL_PauseAudioDevice(sdl_audio_device_id, 0);
+	//SDL_PauseAudioDevice(sdl_audio_device_id, 0);
 
 	/* Open log file. */
 	log_file.open("LogFile.txt", std::ios::out | std::ios::trunc);
@@ -129,7 +129,7 @@ void Emulator::Initialize() {
 	/* Test ROMs */
 	//file_name = "Test/instr_test-v3/all_instrs.nes";
 	//file_name = "Test/instr_test-v5/official_only.nes";
-	//file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
+	file_name = "Test/instr_test-v3/rom_singles/01-implied.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/02-immediate.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/03-zero_page.nes";
 	//file_name = "Test/instr_test-v3/rom_singles/04-zp_xy.nes";
@@ -155,7 +155,7 @@ void Emulator::Initialize() {
 
 	/* NROM Games */
 	//file_name = "ROMs/Baseball.nes";
-	file_name = "ROMs/Donkey Kong.nes";
+	//file_name = "ROMs/Donkey Kong.nes";
 	//file_name = "ROMs/Mario Bros..nes";
 	//file_name = "ROMs/Pinball.nes";
 
@@ -184,13 +184,15 @@ void Emulator::Initialize() {
 
 void Emulator::Loop() {
 
-	is_running = true;
-	emulation_paused = true;
-	single_step = false;
+	// TODO: Handle these elsewhere.
+	
 	display_framerate = false;
-	//disassemble_cpu = true;
+	display_video = true;
+	emulation_paused = false;
+	single_step = false;
 	disassemble_cpu = false;
-	log_to_file = true;
+	log_to_file = false;
+	is_running = true;
 
 	char title_buffer[255];
 
@@ -278,7 +280,7 @@ void Emulator::Loop() {
 		if(nes_system->GetCPU()->CycleCount() % 1000 == 0) {
 			//sprintf(title_buffer, "%f", (frame_time * 1000.0));
 			//sprintf(title_buffer, "%f", frame_rate);
-			sprintf_s(title_buffer, "%lli", nes_system->GetCPU()->CycleCount());
+			//sprintf_s(title_buffer, "%lli", nes_system->GetCPU()->CycleCount());
 			SDL_SetWindowTitle(sdl_window, title_buffer);
 		}
 

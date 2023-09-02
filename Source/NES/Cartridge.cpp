@@ -25,10 +25,10 @@
 
 #include "../HexOutput.hpp"
 
-#include "Mappers\Mapper.hpp"
-#include "Mappers\MapperMMC1.hpp"
-#include "Mappers\MapperMMC5.hpp"
-#include "Mappers\MapperNROM.hpp"
+#include "./Mappers/Mapper.hpp"
+#include "./Mappers/MapperMMC1.hpp"
+#include "./Mappers/MapperMMC5.hpp"
+#include "./Mappers/MapperNROM.hpp"
 #include "iNESHeader.hpp"
 #include "Cartridge.hpp"
 #include "UNIFHeader.hpp"

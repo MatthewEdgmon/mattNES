@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Matthew Edgmon
+ * Copyright (C) 2023 by Matthew Edgmon
  * matthewedgmon@gmail.com
  *
  * This file is part of mattNES.
@@ -21,6 +21,7 @@
 #ifndef __NES_SYSTEM_HPP__
 #define __NES_SYSTEM_HPP__
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -28,6 +29,7 @@ class ControllerIO;
 class Cartridge;
 class APU;
 class CPU;
+class DynaRecEngine;
 class PPU;
 
 class NESSystem {
@@ -93,6 +95,9 @@ class NESSystem {
 		std::unique_ptr<APU> apu;
 		std::unique_ptr<CPU> cpu;
 		std::unique_ptr<PPU> ppu;
+
+		// TODO: Replace CPU with DynaRecEngine
+		std::unique_ptr<DynaRecEngine> cpu_dynarec;
 
 		/* Value on the data busses between CPU, APU, and PPU to emulate bus conflict and floating bus behaviour. */
 		uint8_t floating_bus_value { 0 };
