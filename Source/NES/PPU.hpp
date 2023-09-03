@@ -73,11 +73,11 @@ class PPU {
 
 		/* I/O functions located in PPU_IO.cpp ----------------------------------------------------------- */
 
-		uint8_t ReadPPU(uint16_t address);              /* Internal reads from the PPU are routed here. */
-		void WritePPU(uint16_t address, uint8_t value); /* Internal writes from the PPU are routed here. */
+		uint8_t Read(uint16_t address);              /* Internal reads from the PPU are routed here. */
+		void Write(uint16_t address, uint8_t value); /* Internal writes from the PPU are routed here. */
 
-		uint8_t ReadCPU(uint16_t address);              /* Reads from the CPU are routed here. */
-		void WriteCPU(uint16_t address, uint8_t value); /* Writes from the CPU are routed here. */
+		uint8_t ReadExternal(uint16_t address);              /* Reads from NESSystem bus are routed here. */
+		void WriteExternal(uint16_t address, uint8_t value); /* Writes from NESSystem bus are routed here. */
 
 		/* ----------------------------------------------------------------------------------------------- */
 

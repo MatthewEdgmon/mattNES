@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Matthew Edgmon
+ * Copyright (C) 2023 by Matthew Edgmon
  * matthewedgmon@gmail.com
  *
  * This file is part of mattNES.
@@ -18,24 +18,18 @@
  * along with mattNES.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <bitset>
-#include <cstdint>
-#include <iomanip>
 #include <iostream>
+#include <string>
+#include <sstream>
 #include <vector>
 
 #include "../BitOps.hpp"
 #include "../HexOutput.hpp"
-
-#include "NESSystem.hpp"
-#include "Cartridge.hpp"
-#include "ControllerIO.hpp"
-#include "APU.hpp"
 #include "CPU.hpp"
-#include "PPU.hpp"
+#include "NESSystem.hpp"
 
 CPU::CPU(NESSystem* nes_system) : nes_system(nes_system) {
-
+    
 }
 
 CPU::~CPU() {
@@ -44,193 +38,66 @@ CPU::~CPU() {
 
 void CPU::Initialize() {
 
-	/* Clear RAM */
-	for(size_t i = 0; i < 0x800; i++) {
-		// TODO: Figure out if we need to emulate random values being stored in CPU memory at bootup.
-		cpu_memory[i] = 0x00;
-	}
-
-	halted = false;
-	illegal_opcode_triggered = false;
-	halt_on_illegal_opcode = false;
-	increment_pc = false;
-	test_mode = false;
-
-	operand1 = 0;
-	operand2 = 0;
 }
 
 void CPU::Shutdown() {
-	halted = true;
+
 }
 
 void CPU::Reset(bool hard) {
 
-	vector_nmi  = Read(0xFFFA);
-	vector_nmi += Read(0xFFFB) << 8;
-
-	vector_rst  = Read(0xFFFC);
-	vector_rst += Read(0xFFFD) << 8;
-
-	vector_irq  = Read(0xFFFE);
-	vector_irq += Read(0xFFFF) << 8;
-
-	program_counter = vector_rst;
-	increment_pc = true;
-
-	/* Status register starts with IRQ interrupts disabled (NMI still fires). */
-	register_p = 0x24;
-	register_a = 0;
-	register_x = 0;
-	register_y = 0;
-	register_s = 0xFD;
-
-	std::cout << "Vectors:" << std::endl;
-	std::cout << "  NMI: " << HEX4(vector_nmi) << std::endl;
-	std::cout << "  IRQ: " << HEX4(vector_irq) << std::endl;
-	std::cout << "  RST: " << HEX4(vector_rst) << std::endl;
-
-	/* Cycles always start at 7 on reset due to dummy reads/stack pushes. */
-	cycles = 7;
 }
 
-// TODO: Implementing cycle accuracy should probably start here. Count cycles for reading etc...
-uint8_t CPU::Read(uint16_t address) {
+void CPU::ValidateCache(uint16_t address, uint8_t value) {
 
-	uint8_t value = 0x00;
-
-	     if(address >= 0x0000 && address <= 0x1FFF) { value = cpu_memory[(address & 0x7FF)]; }                                /* Zero Page, mirrored every 0x800 bytes. */
-	else if(address >= 0x2000 && address <= 0x3FFF) { value = nes_system->GetPPU()->ReadCPU((address & 0x2007)); }            /* PPU Register MMIO, mirrored every 8 bytes. */
-	else if(address >= 0x4000 && address <= 0x4013) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address == 0x4014)                      { value = nes_system->GetFloatingBus(); }                                 /* OAMDMA. */
-	else if(address == 0x4015)                      { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address >= 0x4016 && address <= 0x4017) { value = nes_system->GetControllerIO()->ReadIO(address); }               /* I/O. */
-	else if(address >= 0x4018 && address <= 0x401F) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address >= 0x4020 && address <= 0xFFFF) { value = nes_system->GetCartridge()->GetMapper()->ReadCPU(address); }    /* Cartridge Memory Space */
-	else {
-		value = nes_system->GetFloatingBus();
-	}
-
-	nes_system->SetFloatingBus(value);
-	return value;
 }
 
-void CPU::Write(uint16_t address, uint8_t value) {
+void CPU::Compile(uint16_t address) {
 
-	nes_system->SetFloatingBus(value);
-
-		 if(address >= 0x0000 && address <= 0x1FFF) { cpu_memory[(address & 0x7FF)] = value; return; }                             /* Zero Page, mirrored every 0x800 bytes. */
-	else if(address >= 0x2000 && address <= 0x3FFF) { nes_system->GetPPU()->WriteCPU((address & 0x2007), value); return; }         /* PPU Register MMIO, mirrored every 8 bytes. */
-	else if(address >= 0x4000 && address <= 0x4013) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	else if(address == 0x4014)                      { PerformOAMDMA(value); }                                                      /* OAMDMA. */
-	else if(address == 0x4015)                      { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	else if(address == 0x4016)                      { nes_system->GetControllerIO()->WriteIO(address, value); return; }            /* I/O. */
-	else if(address >= 0x4017 && address <= 0x401F) { nes_system->GetAPU()->WriteCPU(address, value); return; }                    /* APU. */
-	else if(address >= 0x4020 && address <= 0xFFFF) { nes_system->GetCartridge()->GetMapper()->WriteCPU(address, value); return; } /* Cartridge Memory Space */
-
-	return;
 }
 
-uint8_t CPU::PeekMemory(uint16_t address) {
-
-	uint8_t value = 0x00;
-
-	// TODO: These should probably all turn into their own side-effect free Peek function.
-	     if(address >= 0x0000 && address <= 0x1FFF) { value = cpu_memory[(address & 0x7FF)]; }                                /* Zero Page, mirrored every 0x800 bytes. */
-	else if(address >= 0x2000 && address <= 0x3FFF) { value = nes_system->GetPPU()->ReadCPU((address & 0x2007)); }            /* PPU Register MMIO, mirrored every 8 bytes. */
-	else if(address >= 0x4000 && address <= 0x4013) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address == 0x4014)                      { value = nes_system->GetFloatingBus(); }                                 /* OAMDMA. */
-	else if(address == 0x4015)                      { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address >= 0x4016 && address <= 0x4017) { value = nes_system->GetControllerIO()->ReadIO(address); }               /* I/O. */
-	else if(address >= 0x4018 && address <= 0x401F) { value = nes_system->GetAPU()->ReadCPU(address); }                       /* APU. */
-	else if(address >= 0x4020 && address <= 0xFFFF) { value = nes_system->GetCartridge()->GetMapper()->ReadCPU(address); }    /* Cartridge Memory Space */
-	else {
-		value = nes_system->GetFloatingBus();
-	}
-
-	return value;
+void CPU::Step() {
+    std::cout << HEX2(nes_system->Read(0x0000));
 }
 
-void CPU::Push(uint8_t value) {
-
-	//if(register_s == 0x00) {
-	//	std::cout << std::endl << std::endl << "STACK OVERFLOW" << std::endl << std::endl;
-	//	nes_system->DumpTestInfo();
-	//	while (1);
-	//}
-
-	Write((0x100 + register_s--), value);
+void CPU::Run() {
+    
 }
 
-uint8_t CPU::Pop() {
-	
-	//if(register_s == 0xFF) {
-	//	std::cout << std::endl << std::endl << "STACK UNDERFLOW" << std::endl << std::endl;
-	//	nes_system->DumpTestInfo();
-	//	while (1);
-	//}
-
-	return Read(0x100 + ++register_s);
+void CPU::Interrupt(interrupt_type_t type) {
+    
 }
 
-void CPU::Interrupt(interrupt_type_t interrupt_type) {
+std::vector<uint8_t> CPU::SaveState() {
+    std::vector<uint8_t> state;
 
-	/* When I flag is on, all but NMI is ignored. */
-	if(BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE)) {
-		if(interrupt_type == INTERRUPT_BRK || interrupt_type == INTERRUPT_IRQ) {
-			return;
-		}
-	}
-
-	if(interrupt_type == INTERRUPT_BRK) {
-		/* Software interrupts add 1 to program counter. */
-		program_counter++;
-	}
-
-	/* Push PC high byte, PC low byte, and processor flags in that order. */
-	Push(uint8_t(program_counter >> 8));
-	Push(uint8_t(program_counter));
-
-	uint8_t flags_to_push = BitCheck(register_p, STATUS_BIT_NEGATIVE)          << 7 |
-							BitCheck(register_p, STATUS_BIT_OVERFLOW)          << 6 |
-							                                                 1 << 5 | /* Will always be 1. */
-							                 (interrupt_type == INTERRUPT_BRK) << 4 | /* Set to one if software interrupt. */
-							BitCheck(register_p, STATUS_BIT_DECIMAL)           << 3 |
-							BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE) << 2 |
-							BitCheck(register_p, STATUS_BIT_ZERO)              << 1 |
-							BitCheck(register_p, STATUS_BIT_CARRY);
-	
-	Push(flags_to_push);
-
-	/* Set interrupt disable flag. */
-	BitSet(register_p, STATUS_BIT_INTERRUPT_DISABLE);
-
-	switch(interrupt_type) {
-		case INTERRUPT_NMI:
-			program_counter = vector_nmi;
-			break;
-		case INTERRUPT_BRK:
-			program_counter = vector_irq;
-		default:
-			break;
-	}
+    return state;
 }
 
-void CPU::PerformOAMDMA(uint8_t value) {
-	
-	/* Check to see if on even or odd CPU cycle. */
-	if(cycles % 2 != 0) {
-		cycles++;
-	}
+void CPU::LoadState(std::vector<uint8_t> state) {
 
-	// 1 dummy read cycle.
-	cycles++;
+}
 
-	const uint16_t oam_dma_page = 0x0100 * value;
+std::string CPU::DebugInfo() {
 
-	// 256 Alternating Read/Write cycles.
-	for(uint16_t i = 0; i < 256; i++) {
-		nes_system->GetPPU()->WriteOAM(Read(oam_dma_page + i));
-		cycles += 2;
-	}
+    std::ostringstream debug_output;
+
+    debug_output << "[CPU]\n";
+    debug_output << "program_counter" << HEX4(program_counter) << '\n';
+    debug_output << "register_a = " << HEX2(register_a) << '\n';
+    debug_output << "register_x = " << HEX2(register_x) << '\n';
+    debug_output << "register_y = " << HEX2(register_y) << '\n';
+    debug_output << "register_s = " << HEX2(register_s) << '\n';
+    debug_output << "register_p = " << HEX2(register_p) << '\n';
+	if(BitCheck(register_p, STATUS_BIT_NEGATIVE))          { debug_output << "NEGATIVE"; }   else { debug_output << "        "; }
+	if(BitCheck(register_p, STATUS_BIT_OVERFLOW))          { debug_output << " OVERFLOW"; }  else { debug_output << "         "; }
+	if(BitCheck(register_p, STATUS_BIT_S2))                { debug_output << " UNUSED2"; }   else { debug_output << "        "; }
+	if(BitCheck(register_p, STATUS_BIT_S1))                { debug_output << " UNUSED1"; }   else { debug_output << "        "; }
+	if(BitCheck(register_p, STATUS_BIT_DECIMAL))           { debug_output << " DECIMAL"; }   else { debug_output << "        "; }
+	if(BitCheck(register_p, STATUS_BIT_INTERRUPT_DISABLE)) { debug_output << " INTERRUPT"; } else { debug_output << "          "; }
+	if(BitCheck(register_p, STATUS_BIT_ZERO))              { debug_output << " ZERO"; }      else { debug_output << "     "; }
+	if(BitCheck(register_p, STATUS_BIT_CARRY))             { debug_output << " CARRY"; }     else { debug_output << "      "; }
+	debug_output << "\n";
+
+    return debug_output.str();
 }

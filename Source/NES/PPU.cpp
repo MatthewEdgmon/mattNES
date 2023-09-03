@@ -112,18 +112,18 @@ void PPU::Step() {
 		uint16_t background_patterntable_address = (BitCheck(ppu_ctrl, 4) << 12);
 
 		/* Fetch name table entry. */
-		uint16_t nametable_entry = ReadPPU(nametable_base_address);
+		uint16_t nametable_entry = Read(nametable_base_address);
 
 		/* Fetch attribute table entry. */
-		uint16_t attribute_entry = ReadPPU(attribute_table_base_address);
+		uint16_t attribute_entry = Read(attribute_table_base_address);
 
 		/* Bit 13 of the address into PPU memory controls whether the pattern table is "left" (0x0000 - 0x0FFF) or "right" (0x1000 - 0x1FFF). */
 		if(ppu_address & 0x1000) {
-			uint16_t pattern_entry = ReadPPU(0x0000 + current_cycle);
-			pattern_entry |= ReadPPU(0x0001 + current_cycle);
+			uint16_t pattern_entry = Read(0x0000 + current_cycle);
+			pattern_entry |= Read(0x0001 + current_cycle);
 		} else {
-			uint16_t pattern_entry = ReadPPU(0x1000 + current_cycle);
-			pattern_entry |= ReadPPU(0x1001 + current_cycle);
+			uint16_t pattern_entry = Read(0x1000 + current_cycle);
+			pattern_entry |= Read(0x1001 + current_cycle);
 		}
 
 		// Each of these come together to form a two-bit value that chooses from one of...
@@ -237,8 +237,8 @@ void PPU::ProcessVisibleScanline() {
 	}
 
 	if(current_cycle >= 337 && current_cycle <= 340) {
-		ReadPPU(0x00);
-		ReadPPU(0x00);
+		Read(0x00);
+		Read(0x00);
 	}
 }
 
@@ -252,7 +252,7 @@ void PPU::ProcessPostrenderScanline() {
 
 		/* Generate NMI if flag in PPUCTRL set. */
 		if(BitCheck(ppu_ctrl, PPU_CTRL_NMI_ENABLE)) {
-			nes_system->GetCPU()->Interrupt(INTERRUPT_NMI);
+			nes_system->GetCPU()->Interrupt(CPU::InterruptType::INTERRUPT_NMI);
 		}
 	}
 }

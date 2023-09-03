@@ -11,7 +11,7 @@ ROMs/
 *.jpeg
 *.bmp
 LogFile.txt
-./mattNES
+mattNES
 
 # Created by https://www.gitignore.io/api/c,vim,c++,zsh,linux,macos,cmake,emacs,windows,visualstudio
 # Edit at https://www.gitignore.io/?templates=c,vim,c++,zsh,linux,macos,cmake,emacs,windows,visualstudio

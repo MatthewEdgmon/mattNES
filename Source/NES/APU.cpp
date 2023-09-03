@@ -68,15 +68,15 @@ float APU::GetOutputState() {
 	return output;
 }
 
-uint8_t APU::ReadAPU(uint16_t address) {
+uint8_t APU::Read(uint16_t address) {
 	return 0xFF;
 }
 
-void APU::WriteAPU(uint16_t address, uint8_t value) {
+void APU::Write(uint16_t address, uint8_t value) {
 
 }
 
-uint8_t APU::ReadCPU(uint16_t address) {
+uint8_t APU::ReadExternal(uint16_t address) {
 
 	uint8_t value = nes_system->GetFloatingBus();
 
@@ -135,7 +135,7 @@ uint8_t APU::ReadCPU(uint16_t address) {
 	return value;
 }
 
-void APU::WriteCPU(uint16_t address, uint8_t value) {
+void APU::WriteExternal(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 

@@ -32,7 +32,7 @@
 
 // TODO: Reading commented out until CPU is working.
 
-uint8_t PPU::ReadPPU(uint16_t address) {
+uint8_t PPU::Read(uint16_t address) {
 
 	uint8_t value = nes_system->GetFloatingBus();
 
@@ -49,7 +49,7 @@ uint8_t PPU::ReadPPU(uint16_t address) {
 	return value;
 }
 
-void PPU::WritePPU(uint16_t address, uint8_t value) {
+void PPU::Write(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 
@@ -64,7 +64,7 @@ void PPU::WritePPU(uint16_t address, uint8_t value) {
 	return;
 }
 
-uint8_t PPU::ReadCPU(uint16_t address) {
+uint8_t PPU::ReadExternal(uint16_t address) {
 
 	uint8_t value = 0x00;
 
@@ -133,13 +133,13 @@ uint8_t PPU::ReadCPU(uint16_t address) {
 	return value;
 }
 
-void PPU::WriteCPU(uint16_t address, uint8_t value) {
+void PPU::WriteExternal(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 
 	/* According to NESdev wiki, writing to certain PPU registers before 29658 CPU clocks is ignored. */
 	/* https://wiki.nesdev.com/w/index.php/PPU_power_up_state */
-	bool unlock_registers = (nes_system->GetCPU()->CycleCount() >= 29658);
+	bool unlock_registers = (nes_system->CycleCount() >= 29658);
 
 	/* PPUCTRL */
 	if(address == 0x2000 && unlock_registers) {

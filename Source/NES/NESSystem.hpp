@@ -25,11 +25,12 @@
 #include <string>
 #include <utility>
 
+#define MEMORY_SIZE 65535
+
 class ControllerIO;
 class Cartridge;
 class APU;
 class CPU;
-class DynaRecEngine;
 class PPU;
 
 class NESSystem {
@@ -70,7 +71,15 @@ class NESSystem {
 		void Reset(bool hard);
 		void Frame();
 
-		void DumpTestInfo();
+		/* Emulated bus read/write. */
+		uint8_t Read(uint16_t address);
+		void Write(uint16_t address, uint8_t value);
+
+		/* Read/write memory/devices without emulation side effects. */
+		uint8_t Peek(uint16_t address);
+		void Poke(uint16_t address, uint8_t value);
+
+		std::string TestInfo();
 
 		cpu_emulation_mode_t    GetCPUModel() { return cpu_emulation_mode;    };
 		ppu_emulation_mode_t    GetPPUModel() { return ppu_emulation_mode;    };
@@ -82,10 +91,14 @@ class NESSystem {
 		CPU* GetCPU() { return cpu.get(); }
 		PPU* GetPPU() { return ppu.get(); }
 
+		uint64_t CycleCount() { return cycles; }
+
 		uint8_t GetFloatingBus() { return floating_bus_value; }
 		void SetFloatingBus(uint8_t value) { floating_bus_value = value; }
 
 	private:
+		void ObjectAttributeMemoryDMA(uint8_t value);
+
 		cpu_emulation_mode_t    cpu_emulation_mode;
 		ppu_emulation_mode_t    ppu_emulation_mode;
 		region_emulation_mode_t region_emulation_mode;
@@ -96,8 +109,10 @@ class NESSystem {
 		std::unique_ptr<CPU> cpu;
 		std::unique_ptr<PPU> ppu;
 
-		// TODO: Replace CPU with DynaRecEngine
-		std::unique_ptr<DynaRecEngine> cpu_dynarec;
+		uint8_t* memory;
+
+		/* Cycle count. */
+		uint64_t cycles;
 
 		/* Value on the data busses between CPU, APU, and PPU to emulate bus conflict and floating bus behaviour. */
 		uint8_t floating_bus_value { 0 };

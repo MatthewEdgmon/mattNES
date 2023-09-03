@@ -19,6 +19,8 @@
  */
 
 #include <iostream>
+#include <string>
+#include <sstream>
 
 #include <SDL.h>
 
@@ -28,19 +30,19 @@
 #include "ControllerIO.hpp"
 #include "Cartridge.hpp"
 #include "CPU.hpp"
-#include "DynaRecEngine.hpp"
 #include "PPU.hpp"
 #include "NESSystem.hpp"
-
 
 NESSystem::NESSystem(cpu_emulation_mode_t cpu_type, ppu_emulation_mode_t ppu_type, region_emulation_mode_t region) {
 	cpu_emulation_mode = cpu_type;
 	ppu_emulation_mode = ppu_type;
 	region_emulation_mode = region;
+
+	memory = new uint8_t[MEMORY_SIZE];
 }
 
 NESSystem::~NESSystem() {
-
+	delete memory;
 }
 
 void NESSystem::Initialize(std::string rom_file_name) {
@@ -62,14 +64,10 @@ void NESSystem::Initialize(std::string rom_file_name) {
 	cpu = std::make_unique<CPU>(this);
 	cpu->Initialize();
 
-	cpu_dynarec = std::make_unique<DynaRecEngine>(this);
-	cpu_dynarec->Initialize();
-
 	Reset(true);
 }
 
 void NESSystem::Shutdown() {
-	cpu_dynarec->Shutdown();
 	cpu->Shutdown();
 	ppu->Shutdown();
 	apu->Shutdown();
@@ -79,16 +77,15 @@ void NESSystem::Reset(bool hard) {
 	controller_io->Reset();
 	apu->Reset(hard);
 	cpu->Reset(hard);
-	cpu_dynarec->Reset(hard);
 	ppu->Reset(hard);
 }
 
 void NESSystem::Frame() {
 
+	static int pal_counter = 0;
+
 	if(region_emulation_mode == RegionEmulationMode::NTSC) {
 		/* For NTSC, there is exactly three PPU steps per CPU step. */
-		// TODO: Replace CPU with DynaRecEngine
-		cpu_dynarec->Step();
 		cpu->Step();
 		ppu->Step();
 		ppu->Step();
@@ -96,59 +93,113 @@ void NESSystem::Frame() {
 		apu->Step();
 	} else if(region_emulation_mode == RegionEmulationMode::PAL) {
 		/* TODO: Handle PAL emulation, which is 3.2 PPU steps per CPU step. */
+		cpu->Step();
+		ppu->Step();
+		ppu->Step();
+		ppu->Step();
+
+		// Every fifth PAL cyle, give the PPU an extra step.
+		if(pal_counter == 5) {
+			ppu->Step();
+			pal_counter = 0;
+		} else {
+			pal_counter++;
+		}
+
+		apu->Step();
 	}
 	
+	cycles++;
 }
 
-void NESSystem::DumpTestInfo() {
+uint8_t NESSystem::Read(uint16_t address) {
+		
+	uint8_t value = 0x00;
 
-	std::cout << "\nCPU STATE\n";
-	std::cout << "Register A = " << HEX2(cpu->GetRegisterA()) << '\n';
-	std::cout << "Register X = " << HEX2(cpu->GetRegisterX()) << '\n';
-	std::cout << "Register Y = " << HEX2(cpu->GetRegisterY()) << '\n';
-	std::cout << "Register S = " << HEX2(cpu->GetRegisterS()) << '\n';
-	std::cout << "Register P = " << HEX2(cpu->GetRegisterP()) << '\n';
-	std::cout << "Program Counter = " << HEX4(cpu->GetProgramCounter()) << '\n';
-	std::cout << "Flags Set: ";
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_NEGATIVE))          { std::cout << " NEGATIVE"; }  else { std::cout << "         "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_OVERFLOW))          { std::cout << " OVERFLOW"; }  else { std::cout << "         "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_S2))                { std::cout << " UNUSED2"; }   else { std::cout << "        "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_S1))                { std::cout << " UNUSED1"; }   else { std::cout << "        "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_DECIMAL))           { std::cout << " DECIMAL"; }   else { std::cout << "        "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_INTERRUPT_DISABLE)) { std::cout << " INTERRUPT"; } else { std::cout << "          "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_ZERO))              { std::cout << " ZERO"; }      else { std::cout << "     "; }
-	if(BitCheck(cpu->GetRegisterP(), STATUS_BIT_CARRY))             { std::cout << " CARRY"; }     else { std::cout << "      "; }
-	std::cout << '\n';
+	     if(address >= 0x0000 && address <= 0x1FFF) { value = memory[(address & 0x7FF)]; }                /* Zero Page, mirrored every 0x800 bytes. */
+	else if(address >= 0x2000 && address <= 0x3FFF) { value = ppu->ReadExternal((address & 0x2007)); }    /* PPU Register MMIO, mirrored every 8 bytes. */
+	else if(address >= 0x4000 && address <= 0x4013) { value = apu->ReadExternal(address); }               /* APU. */
+	else if(address == 0x4014)                      { value = floating_bus_value; }                       /* OAMDMA. */
+	else if(address == 0x4015)                      { value = apu->ReadExternal(address); }               /* APU. */
+	else if(address >= 0x4016 && address <= 0x4017) { value = controller_io->Read(address); }             /* I/O. */
+	else if(address >= 0x4018 && address <= 0x401F) { value = apu->ReadExternal(address); }               /* APU. */
+	else if(address >= 0x4020 && address <= 0xFFFF) { value = cartridge->GetMapper()->ReadCPU(address); } /* Cartridge Memory Space (will ONLY be CPU here). */
+	else {
+		value = floating_bus_value;
+	}
+
+	SetFloatingBus(value);
+	return value;
+}
+
+void NESSystem::Write(uint16_t address, uint8_t value) {
 	
-	/* Check to see which test ROM type is running. */
-	if((GetCPU()->PeekMemory(0x6001) == 0xDE) && (GetCPU()->PeekMemory(0x6002) == 0xB0) && (GetCPU()->PeekMemory(0x6003) == 0x61)) {
+	SetFloatingBus(value);
 
-		if(GetCPU()->PeekMemory(0x6000) == 0x81) {
-			std::cout << "Test ROM needs reset. Resetting...\n";
+		 if(address >= 0x0000 && address <= 0x1FFF) { memory[(address & 0x7FF)] = value; return; }               /* Zero Page, mirrored every 0x800 bytes. */
+	else if(address >= 0x2000 && address <= 0x3FFF) { ppu->WriteExternal((address & 0x2007), value); return; }   /* PPU Register MMIO, mirrored every 8 bytes. */
+	else if(address >= 0x4000 && address <= 0x4013) { apu->WriteExternal(address, value); return; }              /* APU. */
+	else if(address == 0x4014)                      { ObjectAttributeMemoryDMA(value); }                         /* OAMDMA. */
+	else if(address == 0x4015)                      { apu->WriteExternal(address, value); return; }              /* APU. */
+	else if(address == 0x4016)                      { controller_io->Write(address, value); return; }            /* I/O. */
+	else if(address >= 0x4017 && address <= 0x401F) { apu->WriteExternal(address, value); return; }              /* APU. */
+	else if(address >= 0x4020 && address <= 0xFFFF) { cartridge->GetMapper()->WriteCPU(address, value); return; } /* Cartridge Memory Space (will ONLY be CPU here). */
+
+	return;
+}
+
+std::string NESSystem::TestInfo() {
+
+	std::ostringstream test_output;
+
+	/* Check to see which test ROM type is running. */
+	if((Read(0x6001) == 0xDE) && (Read(0x6002) == 0xB0) && (Read(0x6003) == 0x61)) {
+
+		if(Read(0x6000) == 0x81) {
+			test_output << "Test ROM needs reset (1 sec delay). Resetting...\n";
 			// TODO: Remove this SDL_Delay when test suite script is made.
 			SDL_Delay(1000);
 			Reset(false);
-			return;
-		} else if(GetCPU()->PeekMemory(0x6000) == 0x80) {
-			std::cout << "Test ROM still testing. Output: ";
+			return test_output.str();
+		} else if(Read(0x6000) == 0x80) {
+			test_output << "Test ROM needs reset. Resetting...\n";
+			return test_output.str();
 		} else {
-			std::cout << "Test ROM is finished. Result code is " << HEX2X(GetCPU()->PeekMemory(0x6000)) << ". Output: ";
+			test_output << "Test ROM is finished. Result code is " << HEX2X(Read(0x6000)) << ". Output: ";
+
+			uint8_t current_character = 0xFF;
+			uint16_t current_address = 0x6004;
+
+			while(current_character != 0) {
+				current_character = Read(current_address);
+				test_output << current_character;
+				current_address++;
+			}
+
+			test_output << '\n';
 		}
-
-		uint8_t current_character = 0xFF;
-		uint16_t current_address = 0x6004;
-
-		while(current_character != 0) {
-			current_character = GetCPU()->PeekMemory(current_address);
-			std::cout << current_character;
-			current_address++;
-		}
-
-		std::cout << '\n';
-
 	} else {
-		std::cout << "Test ROM results: " << HEX2X(GetCPU()->PeekMemory(0x0002)) << "h, " << HEX2X(GetCPU()->PeekMemory(0x0003)) << "h\n";
+		test_output << "Test ROM results: " << HEX2X(Read(0x0002)) << "h, " << HEX2X(Read(0x0003)) << "h\n";
 	}
 
-	return;
+	return test_output.str();
+}
+
+void NESSystem::ObjectAttributeMemoryDMA(uint8_t value) {
+	
+	/* Check to see if on even or odd CPU cycle. */
+	//if(cycles % 2 != 0) {
+	//	cycles++;
+	//}
+
+	// 1 dummy read cycle.
+	//cycles++;
+
+	const uint16_t oam_dma_page = 0x0100 * value;
+
+	// 256 Alternating Read/Write cycles.
+	for(uint16_t i = 0; i < 256; i++) {
+		ppu->WriteOAM(Read(oam_dma_page + i));
+		//cycles += 2;
+	}
 }

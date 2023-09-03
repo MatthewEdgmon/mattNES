@@ -37,11 +37,11 @@ class APU {
 		void Reset(bool hard);
 		void Step();
 
-		uint8_t ReadAPU(uint16_t address);
-		void WriteAPU(uint16_t address, uint8_t value);
+		uint8_t Read(uint16_t address);                      /* Internal reads from the PPU are routed here. */
+		void Write(uint16_t address, uint8_t value);         /* Internal writes from the PPU are routed here. */
 
-		uint8_t ReadCPU(uint16_t address);
-		void WriteCPU(uint16_t address, uint8_t value);
+		uint8_t ReadExternal(uint16_t address);              /* Reads from NESSystem bus are routed here. */
+		void WriteExternal(uint16_t address, uint8_t value); /* Writes from NESSystem bus are routed here. */
 
 		float GetOutputState();
 

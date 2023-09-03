@@ -47,7 +47,7 @@ void ControllerIO::Reset() {
 	controller_states = { 0 };
 }
 
-uint8_t ControllerIO::ReadIO(uint16_t address) {
+uint8_t ControllerIO::Read(uint16_t address) {
 
 	uint8_t value = nes_system->GetFloatingBus();
 
@@ -81,7 +81,7 @@ uint8_t ControllerIO::ReadIO(uint16_t address) {
 	return value;
 }
 
-void ControllerIO::WriteIO(uint16_t address, uint8_t value) {
+void ControllerIO::Write(uint16_t address, uint8_t value) {
 
 	nes_system->SetFloatingBus(value);
 

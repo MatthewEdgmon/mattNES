@@ -69,8 +69,8 @@ class ControllerIO {
 		void Shutdown();
 		void Reset();
 
-		uint8_t ReadIO(uint16_t address);
-		void WriteIO(uint16_t address, uint8_t value);
+		uint8_t Read(uint16_t address);
+		void Write(uint16_t address, uint8_t value);
 
 		controller_port_state* GetControllerState() { return &controller_states; };
 

@@ -19,8 +19,9 @@
  */
 
 #include <cmath>
+#include <cstdio>
 #include <iostream>
-#include <stdio.h>
+#include <vector>
 
 #include <SDL.h>
 
@@ -175,9 +176,9 @@ void Emulator::Initialize() {
 	nes_system->Initialize(file_name);
 
 	/* Set program counter to automated mode for nestest.nes */
-	if(file_name == "Test/other/nestest.nes") {
-		nes_system->GetCPU()->SetProgramCounter(0xC000);
-	}
+	//if(file_name == "Test/other/nestest.nes") {
+	//	nes_system->GetCPU()->SetProgramCounter(0xC000);
+	//}
 
 	is_fully_initialized = true;
 }
@@ -189,8 +190,6 @@ void Emulator::Loop() {
 	display_framerate = false;
 	display_video = true;
 	emulation_paused = false;
-	single_step = false;
-	disassemble_cpu = false;
 	log_to_file = false;
 	is_running = true;
 
@@ -226,49 +225,20 @@ void Emulator::Loop() {
 			}
 		}
 
+		/* Perform emulation logic. */
 		if(emulation_paused == false) {
-
-			if(disassemble_cpu) {
-				std::cout << nes_system->GetCPU()->StepDisassembler();
-
-				if(log_to_file) {
-					log_file << nes_system->GetCPU()->StepDisassembler();
-				}
-			}
-
 			nes_system->Frame();
 		}
 
-		if(single_step) {
-		
-			if(disassemble_cpu) {
-				std::cout << nes_system->GetCPU()->StepDisassembler();
-
-				if(log_to_file) {
-					log_file << nes_system->GetCPU()->StepDisassembler();
-				}
-			}
-
-			nes_system->Frame();
-
-			single_step = false;
+		/* Update graphics after logic. */
+		if(display_video) {
+			Render();
 		}
 
 		/* Pause at end of automated test for nestest.nes */
 		if(file_name == "Test/other/nestest.nes" && nes_system->GetCPU()->GetProgramCounter() == 0xC66E) {
 			emulation_paused = true;
 		}
-
-		/* Render graphics. */
-		SDL_RenderClear(sdl_renderer);
-
-		if(display_video) {
-			SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (nes_system->GetPPU()->ScreenWidth * 4));
-		}
-
-		SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-
-		SDL_RenderPresent(sdl_renderer);
 
 		frame_end = SDL_GetPerformanceCounter();
 		
@@ -277,7 +247,7 @@ void Emulator::Loop() {
 		frame_rate = 1 / (frame_time * 1000.0);
 
 		/* Only update the cycle counter every 1000 CPU clocks. */
-		if(nes_system->GetCPU()->CycleCount() % 1000 == 0) {
+		if(nes_system->CycleCount() % 1000 == 0) {
 			//sprintf(title_buffer, "%f", (frame_time * 1000.0));
 			//sprintf(title_buffer, "%f", frame_rate);
 			//sprintf_s(title_buffer, "%lli", nes_system->GetCPU()->CycleCount());
@@ -317,6 +287,19 @@ void Emulator::Shutdown() {
 	SDL_Quit();
 }
 
+void Emulator::Render() {
+	/* Render graphics. */
+	SDL_RenderClear(sdl_renderer);
+
+	if(display_video) {
+		SDL_UpdateTexture(sdl_texture, NULL, nes_system->GetPPU()->GetVideoBuffer(), (nes_system->GetPPU()->ScreenWidth * 4));
+	}
+
+	SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+
+	SDL_RenderPresent(sdl_renderer);
+}
+
 void Emulator::HandleInputDown() {
 
 	if(nes_system->GetControllerIO()->IsControllerStrobeLatchHigh()) {
@@ -335,13 +318,13 @@ void Emulator::HandleInputDown() {
 
 	switch(sdl_event.key.keysym.sym) {
 		case SDLK_RETURN:
-			single_step = true;
+			nes_system->Frame();
 			break;
 		case SDLK_ESCAPE:
 			is_running = false;
 			break;
 		case SDLK_d:
-			disassemble_cpu = !disassemble_cpu;
+			nes_system->GetCPU()->ToggleOutput();
 			break;
 		case SDLK_e:
 			emulation_paused = !emulation_paused;
@@ -353,7 +336,7 @@ void Emulator::HandleInputDown() {
 			display_video = !display_video;
 			break;
 		case SDLK_t:
-			nes_system->DumpTestInfo();
+			std::cout << nes_system->TestInfo();
 			break;
 		default:
 			break;

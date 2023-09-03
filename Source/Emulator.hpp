@@ -48,6 +48,8 @@ class Emulator {
 		void Loop();
 		void Shutdown();
 
+		void Render();
+
 		void HandleInputDown();
 		void HandleInputUp();
 
@@ -81,7 +83,6 @@ class Emulator {
 		bool display_framerate { false };
 		bool display_video { true };
 		bool emulation_paused { false };
-		bool single_step { false };
 		bool disassemble_cpu { false };
 		bool log_to_file { false };
 		bool is_fully_initialized{ false };
