@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 by Matthew Edgmon
+ * Copyright (C) 2023 by Matthew Edgmon
  * matthewedgmon@gmail.com
  *
  * This file is part of mattNES.
